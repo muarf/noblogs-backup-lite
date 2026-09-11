@@ -89,8 +89,17 @@ monblog-noblogs-backup.zip
 **Restauration complète (recommandé)** — thème, sidebars, menus, CSS, couleurs, médias, articles :
 ```bash
 unzip monblog-noblogs-backup.zip && cd monblog-noblogs-backup
+./restore.sh
+```
+Sans argument, `restore.sh` vous guide : il **détecte automatiquement vos installations
+WordPress**, vous fait choisir la cible dans un menu numéroté, vous demande la nouvelle
+URL, affiche un **résumé avant exécution**, puis restaure tout :
+```bash
+# Ou en version non-interactive (scripts, CI, Docker) :
 WP=/var/www/html URL=https://monsite.org ./restore.sh
 ```
+Le nettoyage final ne supprime que le contenu par défaut de WordPress (titres
+« Hello world! », « Page d'exemple », etc.) — jamais de vrais articles existants.
 
 **Interface WordPress seule** (articles + pages + médias, sans fidélité) :
 1. Ouvrez **Outils > Importer > WordPress** (installez l'extension si demandé).

@@ -52,14 +52,16 @@ Source : {original_url}
 * **`metadata.json`** — informations sur la sauvegarde.
 
 ## Restauration complète avec `restore.sh` (recommandé, VPS / Docker / WP-CLI)
-Dézippez l'archive, placez le dossier à côté de votre WordPress, puis :
+Dézippez l'archive, puis lancez :
 ```bash
-WP=/var/www/html ./restore.sh
-# ou avec remplacement d'URLs :
-WP=/var/www/html URL=https://monsite.org ./restore.sh
+./restore.sh                              # assistant interactif (détection auto du WordPress)
+WP=/var/www/html ./restore.sh             # cible explicite
+WP=/var/www/html URL=https://monsite.org ./restore.sh  # avec remplacement d'URLs
 ```
-Le script : copie les médias, installe le thème, importe le WXR, remplace les
-URLs, puis applique sidebars, menus, CSS et couleurs d'origine.
+L'assistant détecte automatiquement vos installations WordPress, propose un menu
+numéroté, vous demande la nouvelle URL, affiche un **résumé avant exécution** puis
+applique : médias → thème → import WXR → URLs → sidebars/menus/CSS/couleurs →
+`<!--more-->` → nettoyage (contenu par défaut WP supprimé avec précaution).
 
 ## Restauration manuelle (interface WordPress)
 1. Ouvrez **Outils > Importer > WordPress** (installez l'extension si demandé).
