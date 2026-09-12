@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
+_DOCS_DIR = _PACKAGE_DIR.parent / "docs"
 
 
 def human_size(num: int) -> str:
@@ -122,6 +123,15 @@ def package_backup(
         shutil.copy(_PACKAGE_DIR / "restore_parity.php", stage / "restore_parity.php")
         (stage / "restore.sh").chmod(0o755)
         _write_readme(stage, slug, original_url, has_fidelity, has_theme)
+
+        for guide in (
+            "GUIDE-MILITANTE.md",
+            "GUIDE-WORDPRESS-COM.md",
+            "GUIDE-LOCAL.md",
+        ):
+            src = _DOCS_DIR / guide
+            if src.exists():
+                shutil.copy(src, stage / guide)
 
         media_success = sum(v for k, v in media_stats.items() if k not in ("failed", "urls"))
         (stage / "metadata.json").write_text(

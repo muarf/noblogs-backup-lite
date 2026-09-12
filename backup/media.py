@@ -14,14 +14,17 @@ import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 from .http import fetch_url
 
 _HTML_ERROR = re.compile(rb"\s*<html", re.I)
 
-# Horodatage "maintenant" pour la Wayback : 2025xxxxxxxxxx = snapshot le plus récent
-NOW_TIMESTAMP = "20251231235959"
+# Horodatage « maintenant » pour la Wayback : <AAAA><MM><JJ><HH><MM><SS>
+# = snapshot le plus récent à l'instant du backup (plutôt que figé à une date).
+def _now_timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d%H%M%S")
 
 
 def relative_dest(url: str) -> str:
@@ -32,7 +35,10 @@ def relative_dest(url: str) -> str:
         rel = m_up.group(1) if m_up else os.path.basename(url)
     else:
         rel = m.group(1)
-    return rel.split("?")[0].split("#")[0].lstrip("/")
+    rel = rel.split("?")[0].split("#")[0].lstrip("/")
+    # Sécurité : neutraliser toute tentative de sortie du dossier uploads.
+    parts = [p for p in rel.split("/") if p not in ("", ".", "..")]
+    return "/".join(parts)
 
 
 def wayback_available(url: str) -> tuple[str | None, str | None]:
@@ -66,7 +72,7 @@ def download_one(url: str, dest: Path, use_wayback: bool = True) -> str:
         return "failed"
 
     # 2. Fallback Wayback Machine (snapshot le plus récent)
-    wb_url = f"https://web.archive.org/web/{NOW_TIMESTAMP}id_/{url}"
+    wb_url = f"https://web.archive.org/web/{_now_timestamp()}id_/{url}"
     st_wb, data_wb = fetch_url(wb_url, timeout=30)
     if st_wb == 200 and len(data_wb) > 100 and not _HTML_ERROR.match(data_wb[:300]):
         dest.write_bytes(data_wb)

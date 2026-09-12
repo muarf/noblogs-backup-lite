@@ -24,6 +24,7 @@ WP_OFFICIAL_THEMES = {
     "twentyfourteen", "twentyfifteen", "twentysixteen", "twentyseventeen",
     "twentyeighteen", "twentynineteen", "twentytwenty", "twentytwentyone",
     "twentytwentytwo", "twentytwentythree", "twentytwentyfour",
+    "twentytwentyfive",
 }
 
 

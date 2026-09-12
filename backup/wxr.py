@@ -7,12 +7,100 @@ installation WordPress, ainsi qu'avec `wp import` (WP-CLI).
 from __future__ import annotations
 
 import html
+import os
 import re
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .html_clean import clean_content
+
+_DEFAULT_DATE = "2022-01-01 12:00:00"
+
+_BASE_ITEM = """  <item>
+    <title><![CDATA[{title}]]></title>
+    <link>{link}</link>
+    <dc:creator><![CDATA[{creator}]]></dc:creator>
+    <guid isPermaLink="false">{guid}</guid>
+    <description></description>
+    <content:encoded><![CDATA[{content}]]></content:encoded>
+    <wp:post_id>{pid}</wp:post_id>
+    <wp:post_date><![CDATA[{date}]]></wp:post_date>
+    <wp:post_date_gmt><![CDATA[{gmt}]]></wp:post_date_gmt>
+    <wp:comment_status>{comment_status}</wp:comment_status>
+    <wp:ping_status>{ping_status}</wp:ping_status>
+    <wp:post_name><![CDATA[{name}]]></wp:post_name>
+    <wp:status><![CDATA[{status}]]></wp:status>
+    <wp:post_parent>0</wp:post_parent>
+    <wp:menu_order>0</wp:menu_order>
+    <wp:post_type><![CDATA[{post_type}]]></wp:post_type>
+{extra}  </item>"""
+
+
+def _attachment_item(
+    pid: int,
+    slug: str,
+    clean_site_url: str,
+    attachment: dict,
+    dt_str: str,
+    gmt_str: str,
+) -> str:
+    url = attachment.get("url", "")
+    title = clean_content(attachment.get("title") or "attachment")
+    name = _slugify(title) or f"attachment-{pid}"
+    extra = f"    <wp:attachment_url>{url}</wp:attachment_url>\n"
+    return _BASE_ITEM.format(
+        title=title,
+        link=url,
+        creator=slug,
+        guid=f"{clean_site_url}/?attachment_id={pid}",
+        content="",
+        pid=pid,
+        date=dt_str,
+        gmt=gmt_str,
+        comment_status="open",
+        ping_status="open",
+        name=name,
+        status="inherit",
+        post_type="attachment",
+        extra=extra,
+    )
+
+
+def _parse_datetime(raw: str) -> datetime | None:
+    """Parse une date RSS (RFC-822) ou ISO 8601. Retourne un datetime aware ou None."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%a, %d %b %Y %H:%M:%S %z")
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _local_gmt(dt: datetime | None) -> tuple[str, str]:
+    """(date_locale, date_gmt) au format « YYYY-MM-DD HH:MM:SS »."""
+    if dt is None:
+        return _DEFAULT_DATE, _DEFAULT_DATE
+    local = dt.strftime("%Y-%m-%d %H:%M:%S")
+    gmt = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return local, gmt
+
+
+def rewrite_media_urls(content: str, slug: str, site_url: str) -> str:
+    """Réécrit les URLs NoBlogs (/files/) vers le chemin WordPress standard."""
+    if not content:
+        return content
+    base = site_url.rstrip("/")
+    domains = rf"(?:{re.escape(slug)}\.(?:noblogs\.org|zvz\.fr)|noblogs\.org)"
+    content = re.sub(rf"https?://{domains}/files/", f"{base}/wp-content/uploads/", content)
+    content = re.sub(r"https?://[^/]+/files/", f"{base}/wp-content/uploads/", content)
+    content = re.sub(r"(?<=[\"'=])/?files/", "wp-content/uploads/", content)
+    return content
 
 
 def _slugify(title: str) -> str:
@@ -28,12 +116,15 @@ def generate_wxr(
     pages: list[dict],
     authors: dict[str, str] | None = None,
     language: str = "fr-FR",
+    attachments: list[dict] | None = None,
 ) -> str:
     """Génére le contenu XML WXR 1.2 complet.
 
     * ``slug``        – identifiant court du blog (utilisé en login d'auteur).
     * ``site_url``    – URL cible de comparaison/remplacement (ex. l'ancien domaine).
     * ``authors``     – mapping login → email optionnel (défaut : admin@exemple.org).
+    * ``attachments`` – liste de médias ``{url, title}`` → items ``<wp:attachment>``
+      (l'importeur WordPress rattache alors les fichiers aux articles).
     """
     if authors is None:
         authors = {slug: f"{slug}@backup.noblogs.org"}
@@ -53,6 +144,8 @@ def generate_wxr(
     xml.append(f"  <link>{clean_site_url}</link>")
     xml.append(f"  <language>{language}</language>")
     xml.append("  <wp:wxr_version>1.2</wp:wxr_version>")
+    xml.append(f"  <wp:base_site_url>{clean_site_url}</wp:base_site_url>")
+    xml.append(f"  <wp:base_blog_url>{clean_site_url}</wp:base_blog_url>")
 
     for login, email in authors.items():
         xml.append("  <wp:author>")
@@ -75,18 +168,26 @@ def generate_wxr(
         xml.append("  </wp:category>")
 
     post_id = 1000
+    used_ids: set[int] = set()
+
+    def reserve_id(preferred: int | None = None) -> int:
+        """Attribue un id unique (préféré sinon séquentiel)."""
+        nonlocal post_id
+        if isinstance(preferred, int) and preferred not in used_ids:
+            used_ids.add(preferred)
+            return preferred
+        while True:
+            post_id += 1
+            if post_id not in used_ids:
+                used_ids.add(post_id)
+                return post_id
+
     for p in posts:
-        post_id += 1
-        pid = p.get("id") or post_id
+        pid = reserve_id(p.get("id"))
 
         raw_date = p.get("date") or ""
-        dt_str = "2022-01-01 12:00:00"
-        if raw_date:
-            try:
-                dt = datetime.strptime(raw_date.strip(), "%a, %d %b %Y %H:%M:%S %z")
-                dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")
-            except Exception:
-                pass
+        dt = _parse_datetime(raw_date)
+        dt_str, gmt_str = _local_gmt(dt)
 
         orig_slug = ""
         link = p.get("link", "")
@@ -97,7 +198,7 @@ def generate_wxr(
         p_slug = orig_slug or _slugify(p.get("title", "")) or f"post-{pid}"
 
         p_title = clean_content(p.get("title", ""))
-        content = clean_content(p.get("content", ""))
+        content = rewrite_media_urls(clean_content(p.get("content", "")), slug, clean_site_url)
         xml.append("  <item>")
         xml.append(f"    <title><![CDATA[{p_title}]]></title>")
         xml.append(f"    <link>{link}</link>")
@@ -109,7 +210,7 @@ def generate_wxr(
         xml.append(f"    <content:encoded><![CDATA[{content}]]></content:encoded>")
         xml.append(f"    <wp:post_id>{pid}</wp:post_id>")
         xml.append(f"    <wp:post_date><![CDATA[{dt_str}]]></wp:post_date>")
-        xml.append(f"    <wp:post_date_gmt><![CDATA[{dt_str}]]></wp:post_date_gmt>")
+        xml.append(f"    <wp:post_date_gmt><![CDATA[{gmt_str}]]></wp:post_date_gmt>")
         xml.append("    <wp:post_status><![CDATA[publish]]></wp:post_status>")
         xml.append(f"    <wp:post_name><![CDATA[{p_slug}]]></wp:post_name>")
         xml.append("    <wp:post_type><![CDATA[post]]></wp:post_type>")
@@ -119,21 +220,29 @@ def generate_wxr(
         xml.append("  </item>")
 
     for pg in pages:
-        post_id += 1
-        pg_slug = pg.get("slug") or _slugify(pg.get("title", "")) or f"page-{post_id}"
+        pid = reserve_id()
+        pg_slug = pg.get("slug") or _slugify(pg.get("title", "")) or f"page-{pid}"
+        pg_dt = _parse_datetime(pg.get("date") or "")
+        pg_dt_str, pg_gmt_str = _local_gmt(pg_dt)
         xml.append("  <item>")
         xml.append(f"    <title><![CDATA[{clean_content(pg.get('title', ''))}]]></title>")
         xml.append(f"    <link>{pg.get('url', '')}</link>")
         xml.append(f"    <dc:creator><![CDATA[{slug}]]></dc:creator>")
-        xml.append(f'    <guid isPermaLink="false">{clean_site_url}/?page_id={post_id}</guid>')
-        xml.append(f"    <content:encoded><![CDATA[{clean_content(pg.get('content', ''))}]]></content:encoded>")
-        xml.append(f"    <wp:post_id>{post_id}</wp:post_id>")
-        xml.append("    <wp:post_date><![CDATA[2022-01-01 12:00:00]]></wp:post_date>")
-        xml.append("    <wp:post_date_gmt><![CDATA[2022-01-01 12:00:00]]></wp:post_date_gmt>")
+        xml.append(f'    <guid isPermaLink="false">{clean_site_url}/?page_id={pid}</guid>')
+        pg_content = rewrite_media_urls(clean_content(pg.get("content", "")), slug, clean_site_url)
+        xml.append(f"    <content:encoded><![CDATA[{pg_content}]]></content:encoded>")
+        xml.append(f"    <wp:post_id>{pid}</wp:post_id>")
+        xml.append(f"    <wp:post_date><![CDATA[{pg_dt_str}]]></wp:post_date>")
+        xml.append(f"    <wp:post_date_gmt><![CDATA[{pg_gmt_str}]]></wp:post_date_gmt>")
         xml.append("    <wp:post_status><![CDATA[publish]]></wp:post_status>")
         xml.append(f"    <wp:post_name><![CDATA[{pg_slug}]]></wp:post_name>")
         xml.append("    <wp:post_type><![CDATA[page]]></wp:post_type>")
         xml.append("  </item>")
+
+    for att in attachments or []:
+        pid = reserve_id()
+        att_title = os.path.basename(att.get("path", att.get("url", ""))) or "attachment"
+        xml.append(_attachment_item(pid, slug, clean_site_url, {**att, "title": att_title}, *_local_gmt(None)))
 
     xml.append("</channel>")
     xml.append("</rss>")

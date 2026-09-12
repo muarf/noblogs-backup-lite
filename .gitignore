@@ -6,3 +6,6 @@ dist/
 build/
 *.zip
 .eggs/
+.venv/
+.venv-*/
+backups/

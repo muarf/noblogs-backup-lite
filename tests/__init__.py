@@ -1,0 +1,1 @@
+"""Suite de tests de noblogs-backup (unittest, stdlib uniquement)."""

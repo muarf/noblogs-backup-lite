@@ -63,6 +63,16 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
     pages = scraped.pages
     print(f"  {len(posts)} articles, {len(pages)} pages", flush=True)
 
+    if not posts and not pages:
+        print(
+            f"\n  ❌ ERREUR : aucun contenu trouvé pour « {slug} ».\n"
+            f"     Vérifiez le slug (ex. monblog pour monblog.noblogs.org).\n"
+            f"     Astuce : si le blog est mort, la récupération archive.org est\n"
+            f"     activée par défaut — ne lancez pas avec --no-wayback.",
+            flush=True,
+        )
+        return {"slug": slug, "zip": "", "size": "", "error": "empty"}
+
     # --- médias
     uploads_dir = out_root / slug / "uploads"
     media_stats: dict = {"urls": 0, "direct": 0, "wayback": 0, "wayback-api": 0, "failed": 0, "skipped": 0}
@@ -86,11 +96,23 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
         print("Téléchargement des médias désactivé (--no-media).", flush=True)
         uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- WXR
+    # --- WXR (+ pièces jointes pour les médias téléchargés)
     print("Génération de l'export WXR 1.2…", flush=True)
     stage_dir = out_root / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
+    from .media import relative_dest
     from .wxr import write_wxr
+    attachments = []
+    if not args.no_media and media_urls:
+        for u in media_urls:
+            rel = relative_dest(u)
+            local = uploads_dir / rel
+            if local.exists() and local.stat().st_size > 0:
+                attachments.append({
+                    "url": u,
+                    "path": rel,
+                    "title": rel.split("/")[-1],
+                })
     wxr_path = write_wxr(
         stage_dir / "wordpress-export.xml",
         slug=slug,
@@ -98,6 +120,7 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
         site_url=scraped.base_url,
         posts=posts,
         pages=pages,
+        attachments=attachments,
     )
 
     # --- Fidélité visuelle (theme, sidebars, menus, CSS, couleurs, bannière)
@@ -149,7 +172,12 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    args_list = list(argv) if argv is not None else sys.argv[1:]
+    if args_list and args_list[0] == "wizard":
+        from . import wizard
+        return wizard.main(args_list[1:])
+
+    args = parse_args(args_list)
     if not args.slugs:
         print("Erreur : au moins un slug est requis.", file=sys.stderr)
         print("Usage : python -m backup <slug> [options]", file=sys.stderr)
@@ -171,9 +199,14 @@ def main(argv: list[str] | None = None) -> int:
         results.append(backup_one(slugs[0], args))
 
     print("\n=== BILAN ===")
+    failed = False
     for r in results:
-        print(f"  {r['slug']}: {r['zip']} ({r['size']})")
-    return 0
+        if r.get("error"):
+            print(f"  ❌ {r['slug']}: ÉCHEC — {r['error']}")
+            failed = True
+        else:
+            print(f"  ✅ {r['slug']}: {r['zip']} ({r['size']})")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

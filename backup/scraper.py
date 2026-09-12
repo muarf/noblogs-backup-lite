@@ -180,27 +180,37 @@ class NoblogsScraper:
 
     # ------------------------------------------------------------- pages
 
-    def scrape_pages(self) -> list[dict]:
-        """Récupère les pages statiques via l'API REST WP (ou liste vide)."""
-        st, b = fetch_url(f"{self.base_url}/wp-json/wp/v2/pages?per_page=100")
-        if st != 200 or not b:
-            return []
-        try:
-            data = json.loads(b.decode("utf-8", "replace"))
-        except Exception:
-            return []
-        if not isinstance(data, list):
-            return []
-        return [
-            {
-                "title": pg.get("title", {}).get("rendered", ""),
-                "url": pg.get("link", ""),
-                "slug": pg.get("slug", ""),
-                "content": pg.get("content", {}).get("rendered", ""),
-                "date": pg.get("date", ""),
-            }
-            for pg in data
-        ]
+    def scrape_pages(self, max_pages: int = 20) -> list[dict]:
+        """Récupère les pages statiques via l'API REST WP.
+
+        Parcourt la pagination (par lots de 100) jusqu'à ``max_pages`` pages
+        pour ne pas perdre les >100 pages. Retourne une liste vide si erreur.
+        """
+        out: list[dict] = []
+        for page in range(1, max_pages + 1):
+            url = f"{self.base_url}/wp-json/wp/v2/pages?per_page=100&page={page}"
+            st, b = fetch_url(url)
+            if st != 200 or not b:
+                break
+            try:
+                data = json.loads(b.decode("utf-8", "replace"))
+            except Exception:
+                break
+            if not isinstance(data, list) or not data:
+                break
+            out.extend(
+                {
+                    "title": pg.get("title", {}).get("rendered", ""),
+                    "url": pg.get("link", ""),
+                    "slug": pg.get("slug", ""),
+                    "content": pg.get("content", {}).get("rendered", ""),
+                    "date": pg.get("date", ""),
+                }
+                for pg in data
+            )
+            if len(data) < 100:
+                break
+        return out
 
     # -------------------------------------------------------------- médias
 

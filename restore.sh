@@ -24,44 +24,23 @@ warn() { echo -e "  ${Y}[!]${N} $*"; }
 err()  { echo -e "  ${R}[✗]${N} $*"; }
 info() { echo -e "  ${C}[i]${N} $*"; }
 
-# --- Chargement métadonnées (sans dépendance à python3) ---
+# --- Chargement métadonnées ---
 BACKUP_TITLE="" ; BACKUP_SLUG="" ; BACKUP_THEME="" ; BACKUP_POSTS=0 ; BACKUP_PAGES=0
 BACKUP_MEDIA=0 ; BACKUP_FIDELITY="" ; BACKUP_ORIGINAL_URL=""
-META_JSON="$SCRIPT_DIR/metadata.json"
 
-meta() { # $1 = clé JSON
-  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\{0,1\}\([^\",]*\)\"\{0,1\}.*/\1/p" "$META_JSON" 2>/dev/null | head -1
-}
-
-if [ -f "$META_JSON" ]; then
-  if command -v python3 >/dev/null 2>&1; then
-    META="$META_JSON" python3 - > /tmp/_noblogs_meta.$$ << 'META_PY'
+if [ -f "$SCRIPT_DIR/metadata.json" ]; then
+    eval "$(python3 -c "
 import json, os
-d = json.load(open(os.environ["META"], encoding="utf-8"))
-for k, v in {
- "BACKUP_SLUG": str(d.get("slug", "")),
- "BACKUP_TITLE": str(d.get("title") or ""),
- "BACKUP_THEME": str(d.get("theme") or ""),
- "BACKUP_POSTS": str(d.get("posts_count", 0)),
- "BACKUP_PAGES": str(d.get("pages_count", 0)),
- "BACKUP_MEDIA": str(d.get("media_success", 0)),
- "BACKUP_FIDELITY": "oui" if d.get("fidelity") else "",
- "BACKUP_ORIGINAL_URL": str(d.get("original_url", "")),
-}.items():
-    print(f"{k}='{v}'")
-META_PY
-    source /tmp/_noblogs_meta.$$ 2>/dev/null || true
-    rm -f /tmp/_noblogs_meta.$$
-  else
-    BACKUP_SLUG=$(meta slug)
-    BACKUP_TITLE=$(meta title)
-    BACKUP_THEME=$(meta theme)
-    BACKUP_POSTS=$(meta posts_count)
-    BACKUP_PAGES=$(meta pages_count)
-    BACKUP_MEDIA=$(meta media_success)
-    BACKUP_FIDELITY=$(meta fidelity)
-    BACKUP_ORIGINAL_URL=$(meta original_url)
-  fi
+d = json.load(open('$SCRIPT_DIR/metadata.json'))
+print('BACKUP_SLUG=' + repr(d.get('slug','')))
+print('BACKUP_TITLE=' + repr(d.get('title') or ''))
+print('BACKUP_THEME=' + repr(d.get('theme') or ''))
+print('BACKUP_POSTS=' + str(d.get('posts_count',0)))
+print('BACKUP_PAGES=' + str(d.get('pages_count',0)))
+print('BACKUP_MEDIA=' + str(d.get('media_success',0)))
+print('BACKUP_FIDELITY=' + repr('oui' if d.get('fidelity') else ''))
+print('BACKUP_ORIGINAL_URL=' + repr(d.get('original_url','')))
+" 2>/dev/null)" || true
 fi
 [ -z "$BACKUP_SLUG" ] && BACKUP_SLUG=$(basename "$SCRIPT_DIR" | sed 's/-noblogs-backup$//')
 
@@ -95,23 +74,10 @@ detect_wp() {
 
 # --- Méthode wp avec wrapper ---
 WP_SUDO=""
-WP_DOCKER="${WP_DOCKER:-}"
-WP_CT_PATH="${WP_CT_PATH:-/var/www/html}"
 CP="cp"
 MKDIR="mkdir -p"
 WPQ() {
-    if [ -n "$WP_DOCKER" ]; then
-        local -a _na=()
-        local _a
-        for _a in "$@"; do
-            case "$_a" in
-                "$SCRIPT_DIR"/*) _na+=("${WP_CT_PATH}/${_a#"$SCRIPT_DIR"/}") ;;
-                *) _na+=("$_a") ;;
-            esac
-        done
-        docker exec "$WP_DOCKER" php -d memory_limit=512M /usr/local/bin/wp \
-            --path="$WP_CT_PATH" --allow-root "${_na[@]}"
-    elif [ -n "$WP_SUDO" ]; then
+    if [ -n "$WP_SUDO" ]; then
         $WP_SUDO wp --path="$WP" --allow-root "$@"
     else
         wp --path="$WP" --allow-root "$@"
@@ -119,14 +85,7 @@ WPQ() {
 }
 
 setup_wp_cmd() {
-    if [ -n "$WP_DOCKER" ]; then
-        if command -v docker &>/dev/null && docker ps -a --format '{{.Names}}' | grep -qx "$WP_DOCKER"; then
-            ok "WP-CLI disponible (conteneur $WP_DOCKER)"
-        else
-            warn "Conteneur $WP_DOCKER introuvable — l'import WXR et la fidélité seront manuels."
-            WP_DOCKER=""
-        fi
-    elif have_wp; then
+    if command -v wp &>/dev/null; then
         if id -u &>/dev/null && [ "$(id -u)" -ne 0 ] && [ ! -w "$WP/wp-content" ]; then
             if command -v sudo &>/dev/null; then
                 WP_SUDO="sudo"
@@ -146,107 +105,6 @@ setup_wp_cmd() {
         CP="sudo cp"
         MKDIR="sudo mkdir -p"
     fi
-}
-
-# Vrai si un client WP-CLI est disponible (hôte ou conteneur Docker).
-have_wp() {
-    [ -n "$WP_DOCKER" ] || command -v wp >/dev/null 2>&1
-}
-
-# --- Installation automatique de WordPress via Docker (dans ce dossier) ---
-auto_install_docker() {
-    info "Installation automatique de WordPress avec Docker…"
-    command -v docker >/dev/null 2>&1 || { err "Docker n'est pas installé sur cette machine."; return 1; }
-    docker info >/dev/null 2>&1 || { err "Docker ne semble pas démarré (lancez-le puis réessayez)."; return 1; }
-
-    local NB_NET="noblogs-net" NB_DB="noblogs-db" NB_CLI="noblogs-cli" NB_WEB="noblogs-web"
-    local NB_PORT="${NOBLOGS_PORT:-8080}" NB_WP=""
-    local UID_NUM="" GID_NUM=""
-
-    # Le dossier courant (celui du backup, où tourne restore.sh) devient la racine du site.
-    NB_WP="$SCRIPT_DIR"
-
-    docker network inspect "$NB_NET" >/dev/null 2>&1 || docker network create "$NB_NET" >/dev/null
-
-    if ! docker ps -a --format '{{.Names}}' | grep -qx "$NB_DB"; then
-        ok "Démarrage de MariaDB…"
-        docker run -d --name "$NB_DB" --network "$NB_NET" \
-            -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=wordpress \
-            -e MARIADB_USER=wp -e MARIADB_PASSWORD=wp mariadb:10.11 >/dev/null
-    fi
-
-    # Le conteneur WP-CLI tourne avec l'UID hôte pour que les fichiers restent possédés
-    # par l'utilisateur actuel (sinon le cp des médias échouerait en permissions).
-    # On le recrée toujours : il doit monter LE dossier courant (multi-blogs).
-    if command -v id >/dev/null 2>&1; then
-        UID_NUM="$(id -u)" ; GID_NUM="$(id -g)"
-    fi
-    docker rm -f "$NB_CLI" >/dev/null 2>&1 || true
-    ok "Démarrage de WP-CLI…"
-    if [ -n "$UID_NUM" ]; then
-        docker run -d --name "$NB_CLI" --network "$NB_NET" -u "$UID_NUM:$GID_NUM" \
-            -e WP_CLI_CACHE_DIR=/tmp/wp-cli \
-            -v "$NB_WP:/var/www/html" wordpress:cli sleep infinity >/dev/null
-    else
-        docker run -d --name "$NB_CLI" --network "$NB_NET" \
-            -v "$NB_WP:/var/www/html" wordpress:cli sleep infinity >/dev/null
-    fi
-
-    echo -n "  Attente de MariaDB…"
-    local i
-    for i in $(seq 1 60); do
-        if docker exec "$NB_DB" mariadb -uroot -proot -e 'SELECT 1' >/dev/null 2>&1; then
-            echo " prête."
-            break
-        fi
-        [ "$i" -eq 60 ] && { echo " échec."; err "MariaDB ne répond pas."; return 1; }
-        sleep 1
-    done
-
-    # Nouveau dossier (aucun WordPress) : base vierge + installation neuve.
-    # Un dossier déjà restauré garde sa base (jamais effacée).
-    if [ ! -f "$NB_WP/wp-load.php" ]; then
-        ok "Base vierge pour ce blog…"
-        docker exec "$NB_DB" mariadb -uroot -proot -e \
-            "DROP DATABASE IF EXISTS wordpress; CREATE DATABASE wordpress CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >/dev/null 2>&1 || true
-        ok "Téléchargement de WordPress…"
-        if ! docker exec "$NB_CLI" php -d memory_limit=512M /usr/local/bin/wp core download \
-            --path=/var/www/html --locale=fr_FR --allow-root >/dev/null 2>&1; then
-            docker exec "$NB_CLI" php -d memory_limit=512M /usr/local/bin/wp core download \
-                --path=/var/www/html --allow-root >/dev/null 2>&1 || \
-                { err "Échec du téléchargement de WordPress (réseau du conteneur ?)."; return 1; }
-        fi
-        docker exec "$NB_CLI" php -d memory_limit=512M /usr/local/bin/wp config create \
-            --path=/var/www/html --dbname=wordpress --dbuser=wp --dbpass=wp \
-            --dbhost="$NB_DB" --allow-root >/dev/null 2>&1 || true
-    fi
-
-    # Installation initiale (compte admin, une seule fois)
-    if ! docker exec "$NB_CLI" php -d memory_limit=512M /usr/local/bin/wp core is-installed \
-        --path=/var/www/html --allow-root >/dev/null 2>&1; then
-        local NB_ADMIN_USER="admin" NB_ADMIN_PASS=""
-        NB_ADMIN_PASS="$(tr -dc 'a-zA-Z0-9' </dev/urandom 2>/dev/null | head -c 12 || true)"
-        [ -n "$NB_ADMIN_PASS" ] || NB_ADMIN_PASS="noblogs2026"
-        docker exec "$NB_CLI" php -d memory_limit=512M /usr/local/bin/wp core install \
-            --path=/var/www/html --url="http://localhost:$NB_PORT" \
-            --title="$(printf '%s\n' "$BACKUP_TITLE — restauration NoBlogs")" \
-            --admin_user="$NB_ADMIN_USER" --admin_password="$NB_ADMIN_PASS" \
-            --admin_email="admin@example.org" --skip-email --allow-root >/dev/null 2>&1 && \
-            echo "  Admin WordPress : $NB_ADMIN_USER / $NB_ADMIN_PASS"
-    fi
-
-    # Serveur web (affichage http://localhost:$NB_PORT) — recréé pour monter ce dossier
-    if [ -f "$NB_WP/wp-load.php" ] && [ ! -f "$NB_WP/wp-config.php" ]; then
-        warn "wp-config.php absent — le serveur web n'affichera pas le site."
-    fi
-    docker rm -f "$NB_WEB" >/dev/null 2>&1 || true
-    ok "Démarrage du serveur web…"
-    docker run -d --name "$NB_WEB" --network "$NB_NET" -p "$NB_PORT:80" \
-        -v "$NB_WP:/var/www/html" wordpress:latest >/dev/null
-
-    WP="$NB_WP"
-    WP_DOCKER="$NB_CLI"
-    return 0
 }
 
 # --- Mode interactif ---
@@ -275,32 +133,14 @@ if [ "$INTERACTIVE" = "1" ]; then
     if [ ${#INSTALLS[@]} -eq 0 ]; then
         warn "Aucune installation WordPress détectée automatiquement."
         echo ""
-        echo "  [1]  Indiquer le chemin moi-même"
-        echo "  [2]  Auto-installer WordPress avec Docker (recommandé)"
-        echo ""
         while true; do
-            read -rp "  Votre choix [1/2] : " NOBLOGS_CHOICE
-            NOBLOGS_CHOICE="${NOBLOGS_CHOICE:-2}"
-            if [ "$NOBLOGS_CHOICE" = "2" ]; then
-                if auto_install_docker; then
-                    ok "WordPress installé : $WP"
-                    break
-                fi
-                echo ""
-                echo "  [1]  Indiquer le chemin moi-même"
-                echo ""
-                NOBLOGS_CHOICE="1"
+            read -rp "  Chemin vers votre WordPress (ex: /var/www/html) : " WP
+            WP="${WP/#\~/$HOME}"
+            if [ -f "$WP/wp-load.php" ]; then
+                ok "WordPress trouvé : $WP"
+                break
             fi
-            if [ "$NOBLOGS_CHOICE" = "1" ]; then
-                read -rp "  Chemin vers votre WordPress (ex: /var/www/html) : " WP
-                WP="${WP/#\~/$HOME}"
-                if [ -f "$WP/wp-load.php" ]; then
-                    ok "WordPress trouvé : $WP"
-                    break
-                fi
-                err "wp-load.php introuvable dans '$WP'. Réessayez."
-            fi
-            echo ""
+            err "wp-load.php introuvable dans '$WP'. Réessayez."
         done
     else
         echo ""
@@ -339,7 +179,7 @@ if [ "$INTERACTIVE" = "1" ]; then
     # --- Étape 2 : URL ---
     echo ""
     CURRENT_SITEURL=""
-    if have_wp; then
+    if command -v wp &>/dev/null; then
         CURRENT_SITEURL=$(WPQ option get siteurl 2>/dev/null | tr -d '[:space:]' || true)
     fi
 
@@ -442,7 +282,7 @@ if [ -d "$SCRIPT_DIR/theme" ]; then
         $MKDIR "$WP/wp-content/themes"
         $CP -r "$THEME_DIR" "$WP/wp-content/themes/$THEME_NAME"
         ok "Thème '$THEME_NAME' copié"
-        if have_wp; then
+        if command -v wp &>/dev/null; then
             WPQ theme activate "$THEME_NAME" 2>/dev/null && \
                 ok "Thème '$THEME_NAME' activé" || \
                 warn "Activation échouée — activez-le manuellement."
@@ -459,7 +299,7 @@ echo -e "${C}3/7  Import WXR (articles + pages)${N}"
 if [ "$SKIP_WXR" = "1" ]; then
     info "Import WXR ignoré (SKIP_WXR=1)."
 elif [ -f "$SCRIPT_DIR/wordpress-export.xml" ]; then
-    if have_wp; then
+    if command -v wp &>/dev/null; then
         WPQ plugin is-active wordpress-importer >/dev/null 2>&1 || \
             WPQ plugin install wordpress-importer --activate 2>/dev/null || true
         WPQ import "$SCRIPT_DIR/wordpress-export.xml" --authors=create 2>&1 | tail -5
@@ -473,7 +313,7 @@ fi
 
 # ========================== 4. URL REPLACEMENT ==============================
 echo -e "${C}4/7  Remplacement des URLs${N}"
-if [ -n "$URL" ] && have_wp; then
+if [ -n "$URL" ] && command -v wp &>/dev/null; then
     ORIGINAL_URL="$BACKUP_ORIGINAL_URL"
     if [ -n "$ORIGINAL_URL" ]; then
         WPQ search-replace "$ORIGINAL_URL" "$URL" --all-tables 2>/dev/null && \
@@ -492,7 +332,7 @@ fi
 
 # ========================== 5. PARITY (widgets, menus, CSS) =================
 echo -e "${C}5/7  Fidélité visuelle${N}"
-if [ -f "$SCRIPT_DIR/fidelity.json" ] && [ -f "$SCRIPT_DIR/restore_parity.php" ] && have_wp; then
+if [ -f "$SCRIPT_DIR/fidelity.json" ] && [ -f "$SCRIPT_DIR/restore_parity.php" ] && command -v wp &>/dev/null; then
     WPQ eval-file "$SCRIPT_DIR/restore_parity.php" 2>&1 | head -20
     ok "Fidélité appliquée."
 else
@@ -502,37 +342,31 @@ fi
 
 # ========================== 6. MORE TAGS ====================================
 echo -e "${C}6/7  Balises <!--more-->${N}"
-if have_wp; then
-    MORE_TMP="$SCRIPT_DIR/.noblogs_more_$$.php"
-    cat > "$MORE_TMP" << 'MOREPHP'
-<?php
-global $wpdb;
-$t = $wpdb->prefix . "posts";
-$wpdb->query("UPDATE {$t} SET post_content = REGEXP_REPLACE(post_content, '<p><span id=\"more-[0-9]+\"></span></p>', '<!--more-->')");
-$wpdb->query("UPDATE {$t} SET post_content = REGEXP_REPLACE(post_content, '<span id=\"more-[0-9]+\"></span>', '<!--more-->')");
-$wpdb->query("UPDATE {$t} SET post_content = REGEXP_REPLACE(post_content, '<p><!--more--></p>', '<!--more-->')");
-MOREPHP
-    WPQ eval-file "$MORE_TMP" 2>/dev/null && \
+if command -v wp &>/dev/null; then
+    cat > /tmp/_restore_more_$$.sql << 'SQL'
+UPDATE wp_posts SET post_content = REGEXP_REPLACE(post_content, '<p><span id="more-[0-9]+"></span></p>', '<!--more-->');
+UPDATE wp_posts SET post_content = REGEXP_REPLACE(post_content, '<span id="more-[0-9]+"></span>', '<!--more-->');
+UPDATE wp_posts SET post_content = REGEXP_REPLACE(post_content, '<p><!--more--></p>', '<!--more-->');
+SQL
+    WPQ db query < /tmp/_restore_more_$$.sql 2>/dev/null && \
         ok "Tags <!--more--> restaurés." || \
         warn "Échec restauration more."
-    rm -f "$MORE_TMP"
+    rm -f /tmp/_restore_more_$$.sql
 fi
 
 # ========================== 7. FINAL CLEANUP ================================
 echo -e "${C}7/7  Nettoyage final${N}"
-if have_wp; then
+if command -v wp &>/dev/null; then
     WPQ rewrite flush 2>/dev/null
     WPQ cache flush 2>/dev/null
     # Supprimer uniquement le contenu par défaut WordPress ("Hello world!"),
     # jamais les vrais articles d'un site existant.
-    DEFAULT_IDS=$(WPQ post list --post_type=post,page --post_status=publish,draft \
-        --fields=ID,post_title --format=csv 2>/dev/null | while IFS=, read -r id title; do
-        case "$title" in
-            *"Hello world!"*|*"Sample Page"*|*"Bonjour tout le monde"*|*"Page d"*"exemple"*|*"Politique de confidentialité"*|*"Privacy Policy"*) echo "$id" ;;
+    WPQ post delete $(WPQ post list --post_type=post,page --post_status=publish,draft --field=ID --format=ids 2>/dev/null | while read -r id; do
+        t=$(WPQ post get "$id" --field=post_title 2>/dev/null | tr '\302\240 ' '  ' || true)
+        case "$t" in
+            "Hello world!"*|"Sample Page"*|"Bonjour tout le monde !"*|"Page d'exemple"*|"Politique de confidentialité"*) echo "$id" ;;
         esac
-    done | tr '\n' ' ')
-    # shellcheck disable=SC2086
-    [ -n "${DEFAULT_IDS:-}" ] && WPQ post delete $DEFAULT_IDS --force 2>/dev/null || true
+    done | tr '\n' ' ') --force 2>/dev/null || true
     WPQ option update use_balanceTags 1 2>/dev/null || true
 fi
 
@@ -563,15 +397,15 @@ fi
 
 # --- Rapport final ---
 FINAL_SITEURL=""
-if have_wp; then
+if command -v wp &>/dev/null; then
     FINAL_SITEURL=$(WPQ option get siteurl 2>/dev/null | tr -d '[:space:]' || true)
 fi
 FINAL_POSTS=0
-if have_wp; then
+if command -v wp &>/dev/null; then
     FINAL_POSTS=$(WPQ post list --post_type=post --format=count 2>/dev/null || echo "?")
 fi
 FINAL_PAGES=0
-if have_wp; then
+if command -v wp &>/dev/null; then
     FINAL_PAGES=$(WPQ post list --post_type=page --format=count 2>/dev/null || echo "?")
 fi
 

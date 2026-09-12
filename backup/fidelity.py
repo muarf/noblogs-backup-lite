@@ -38,6 +38,11 @@ KEEP_CSS_KEYWORDS = [
     "header-styles", "inline-css", "style-inline", "footnotes", "color",
 ]
 
+# Blocs Gutenberg « wp-block-*-inline-css » : CSS généré par le cœur WP,
+# non spécifique au blog — inutile dans fidelity.json.
+_BLOCK_INLINE_CSS = re.compile(r"^wp-block-[a-z0-9-]+-inline-css$")
+_SOURCEURL_COMMENT = re.compile(r"(?m) *\/\*# ?sourceURL=[^*]*?\*\/")
+
 # Dimensions de bannière par thème (source: Theme Handbook WP)
 HEADER_DIMS: dict[str, tuple[int, int]] = {
     "twentyten": (940, 198),
@@ -218,11 +223,14 @@ def _extract_custom_css(html: str, slug: str) -> str:
         block_lower = block_id.lower()
         if any(ex in block_lower for ex in EXCLUDE_CSS_IDS):
             continue
+        if _BLOCK_INLINE_CSS.match(block_id):
+            continue
         if "custom-background" in block_lower:
             continue
         if any(kw in block_lower for kw in KEEP_CSS_KEYWORDS):
             rules.append(f"/* {block_id} */\n{content.strip()}")
     combined = "\n\n".join(rules)
+    combined = _SOURCEURL_COMMENT.sub("", combined)
     combined = _abs_urls(combined, slug)
     return combined
 

@@ -54,6 +54,17 @@ echo "→ Thème : " . ($fid['theme'] ?? '?') . "\n";
 // -------------------------------------------------------------- THEME MODS
 $theme       = $fid['theme'] ?? get_template();
 $serial_theme = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $theme);
+
+// Activer le thème fidélité s'il est présent et différent de l'actif
+if (wp_get_theme($theme)->exists() && wp_get_theme()->get_stylesheet() !== $theme) {
+    $switched = switch_theme($theme);
+    if (is_wp_error($switched)) {
+        echo "→ Thème non activé : " . $switched->get_error_message() . "\n";
+    } else {
+        echo "→ Thème activé : $theme\n";
+    }
+}
+
 $mods        = get_option("theme_mods_$serial_theme", []);
 if (!is_array($mods)) $mods = [];
 
