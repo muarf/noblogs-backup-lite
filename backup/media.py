@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
+from .i18n import t
 from .http import fetch_url
 
 _HTML_ERROR = re.compile(rb"\s*<html", re.I)
@@ -112,7 +113,7 @@ def download_media(
         if show_progress:
             done += 1
             print(
-                f"  [{done}/{total}] {status:<8} {u}",
+                t("  [{}/{}] {:<8} {}").format(done, total, status, u),
                 flush=True,
             )
         return status

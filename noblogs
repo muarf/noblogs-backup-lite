@@ -20,6 +20,31 @@ warn() { echo -e "  ${Y}!${N} $*"; }
 err()  { echo -e "  ${R}✗${N} $*" >&2; }
 info() { echo -e "  ${C}→${N} $*"; }
 
+# --- Langue ---
+USER_LANG="${LANG:-}"
+if [[ "$USER_LANG" == en* ]]; then
+  L_ERR_PY="Python 3 is required."
+  L_INFO_PY_MAC="Install it: xcode-select --install or brew install python3"
+  L_INFO_PY_TAILS="On Tails: Applications → Utilities → Terminal (Python 3 is included)."
+  L_INFO_PY_LINUX="Install it: sudo apt install python3 python3-venv python3-pip"
+  L_INFO_ENV="First use: preparing the environment (1 to 2 min)…"
+  L_OK_ENV="Environment ready."
+elif [[ "$USER_LANG" == it* ]]; then
+  L_ERR_PY="Python 3 è richiesto."
+  L_INFO_PY_MAC="Installalo: xcode-select --install oppure brew install python3"
+  L_INFO_PY_TAILS="Su Tails: Applicazioni → Utilità → Terminale (Python 3 è incluso)."
+  L_INFO_PY_LINUX="Installalo: sudo apt install python3 python3-venv python3-pip"
+  L_INFO_ENV="Primo utilizzo: preparazione dell'ambiente (1-2 min)…"
+  L_OK_ENV="Ambiente pronto."
+else
+  L_ERR_PY="Python 3 est requis."
+  L_INFO_PY_MAC="Installez-le : xcode-select --install  ou  brew install python3"
+  L_INFO_PY_TAILS="Sur Tails : Applications → Utilitaires → Terminal (Python 3 est inclus)."
+  L_INFO_PY_LINUX="Installez-le : sudo apt install python3 python3-venv python3-pip"
+  L_INFO_ENV="Première utilisation : préparation de l'environnement (1 à 2 min)…"
+  L_OK_ENV="Environnement prêt."
+fi
+
 detect_platform() {
   if [ -f /etc/amnesia ] || [ -n "${TAILS_VERSION:-}" ]; then
     echo "tails"
@@ -42,11 +67,11 @@ venv_dir() {
 
 ensure_python() {
   if ! command -v python3 >/dev/null 2>&1; then
-    err "Python 3 est requis."
+    err "$L_ERR_PY"
     case "$(detect_platform)" in
-      macos)  info "Installez-le : xcode-select --install  ou  brew install python3" ;;
-      tails)  info "Sur Tails : Applications → Utilitaires → Terminal (Python 3 est inclus)." ;;
-      *)      info "Installez-le : sudo apt install python3 python3-venv python3-pip" ;;
+      macos)  info "$L_INFO_PY_MAC" ;;
+      tails)  info "$L_INFO_PY_TAILS" ;;
+      *)      info "$L_INFO_PY_LINUX" ;;
     esac
     exit 1
   fi
@@ -57,11 +82,11 @@ ensure_venv() {
   local VENV
   VENV="$(venv_dir)"
   if [ ! -x "$VENV/bin/python3" ]; then
-    info "Première utilisation : préparation de l'environnement (1 à 2 min)…"
+    info "$L_INFO_ENV"
     python3 -m venv "$VENV"
     "$VENV/bin/pip" install -q --upgrade pip
     "$VENV/bin/pip" install -q -r "$REPO_ROOT/requirements.txt"
-    ok "Environnement prêt."
+    ok "$L_OK_ENV"
   fi
   export NOBLOGS_VENV="$VENV"
 }

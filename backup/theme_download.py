@@ -16,6 +16,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from .i18n import t
 from .http import fetch_url
 
 # Thèmes officiels WordPress ( connus pour les blogs NoBlogs)
@@ -45,23 +46,23 @@ def download_theme(
     if theme_slug in WP_OFFICIAL_THEMES:
         ok = _download_official(theme_slug, dest_dir)
         if ok:
-            print(f"  [thème] {theme_slug} téléchargé depuis WordPress.org")
+            print(t("  [thème] {} téléchargé depuis WordPress.org").format(theme_slug))
             return theme_dir
 
     # 2. Téléchargement direct depuis le blog d'origine (style.css brut)
     ok = _download_from_site(theme_slug, base_url, dest_dir, use_wayback=use_wayback)
     if ok:
-        print(f"  [thème] {theme_slug} téléchargé depuis {base_url}")
+        print(t("  [thème] {} téléchargé depuis {}").format(theme_slug, base_url))
         return theme_dir
 
     # 3. Fallback archive.org
     if use_wayback:
         ok = _download_from_wayback(theme_slug, base_url, dest_dir)
         if ok:
-            print(f"  [thème] {theme_slug} récupéré depuis archive.org")
+            print(t("  [thème] {} récupéré depuis archive.org").format(theme_slug))
             return theme_dir
 
-    print(f"  [thème] {theme_slug} introuvable — fallback sur thème standard.")
+    print(t("  [thème] {} introuvable — fallback sur thème standard.").format(theme_slug))
     return None
 
 
