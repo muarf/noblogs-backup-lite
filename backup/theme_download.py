@@ -1,9 +1,10 @@
 """theme_download.py — Téléchargement du thème WordPress actif.
 
 Stratégie :
-1. Miroir git NoBlogs (``github.com/muarf/noblogs-assets``) — thèmes nobles
-   et legacy récupérés avant la fermeture d'Autistici/Inventati.
-2. Thème standard WP (twentyten..twentytwentyfive) → API WordPress.org.
+1. Miroir git NoBlogs (``github.com/muarf/noblogs-assets``) — thèmes nobles,
+   legacy ET officiels WP, récupérés avant la fermeture d'Autistici/Inventati.
+   Version exacte du blog, autonome (aucune dépendance à WordPress.org).
+2. Thème officiel WP absent du miroir → API WordPress.org.
 3. Blog d'origine → crawl du fichier style.css.
 4. Fallback → archive.org.
 
@@ -46,14 +47,15 @@ def download_theme(
     dest_dir.mkdir(parents=True, exist_ok=True)
     theme_dir = dest_dir / theme_slug
 
-    # 0. Miroir git NoBlogs (thème complet — templates PHP inclus)
-    if theme_slug not in WP_OFFICIAL_THEMES:
-        ok = _download_from_noblogs_git(theme_slug, dest_dir)
-        if ok:
-            print(f"  [thème] {theme_slug} téléchargé depuis le miroir NoBlogs Git")
-            return theme_dir
+    # 0. Miroir git NoBlogs (thème complet — templates PHP inclus),
+    #    pour TOUS les thèmes, y compris les officiels WP : version exacte
+    #    du blog, auto-hébergée, pas de dépendance à WordPress.org.
+    ok = _download_from_noblogs_git(theme_slug, dest_dir)
+    if ok:
+        print(f"  [thème] {theme_slug} téléchargé depuis le miroir NoBlogs Git")
+        return theme_dir
 
-    # 1. Thème officiel WP → API WordPress.org
+    # 1. Thème officiel WP absent du miroir → API WordPress.org
     if theme_slug in WP_OFFICIAL_THEMES:
         ok = _download_official(theme_slug, dest_dir)
         if ok:
