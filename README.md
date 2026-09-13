@@ -1,8 +1,7 @@
 # noblogs-backup-lite
 
-Sauvegarde **complète et autonome** de n'importe quel blog [NoBlogs](https://noblogs.org), empaquetée dans un ZIP. C'est la version épurée de `noblogs-backup` : **sauvegarde uniquement** — sans restauration ni republication.
-
-## Démarrage militant (1 commande)
+Sauvegarde **complète et autonome** de n'importe quel blog [NoBlogs](https://noblogs.org), empaquetée dans un ZIP.
+## Démarrage (1 commande)
 
 | OS | Comment lancer |
 |---|---|
