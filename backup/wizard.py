@@ -40,15 +40,22 @@ def detect_platform() -> str:
     return "linux"
 
 
+from urllib.parse import urlparse
+
 def slug_from_input(raw: str) -> str:
     raw = (raw or "").strip()
     if raw.startswith(("http://", "https://")):
-        raw = raw.split("/")[2]
+        raw = urlparse(raw).netloc
     raw = raw.split("/")[0].split("?")[0]
-    for suffix in (".noblogs.org", ".zvz.fr"):
-        if raw.lower().endswith(suffix):
+    # Strip common domains if present, otherwise just use the first part of the domain as slug
+    raw = raw.lower()
+    for suffix in (".noblogs.org", ".zvz.fr", ".wordpress.com"):
+        if raw.endswith(suffix):
             raw = raw[: -len(suffix)]
-    return raw.strip().lower().replace(" ", "")
+            break
+    if "." in raw:
+        raw = raw.split(".")[0]
+    return raw.strip().replace(" ", "")
 
 
 def _read(prompt: str) -> str:
@@ -170,7 +177,7 @@ def interactive_wizard() -> int:
     else:
         print(f"  {plat[0].upper() + plat[1:]} détecté.")
     print("")
-    print("  Votre slug NoBlogs : la partie avant .noblogs.org")
+    print("  Le slug de votre blog : la première partie de l'adresse")
     print("  Ex. https://monblog.noblogs.org → monblog")
     print("")
     slug = _read("  Slug de votre blog : ")

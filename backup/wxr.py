@@ -91,12 +91,15 @@ def _local_gmt(dt: datetime | None) -> tuple[str, str]:
     return local, gmt
 
 
+from urllib.parse import urlparse
+
 def rewrite_media_urls(content: str, slug: str, site_url: str) -> str:
     """Réécrit les URLs NoBlogs (/files/) vers le chemin WordPress standard."""
     if not content:
         return content
     base = site_url.rstrip("/")
-    domains = rf"(?:{re.escape(slug)}\.(?:noblogs\.org|zvz\.fr)|noblogs\.org)"
+    domain = urlparse(base).netloc or f"{slug}.noblogs.org"
+    domains = rf"(?:{re.escape(domain)}|noblogs\.org)"
     content = re.sub(rf"https?://{domains}/files/", f"{base}/wp-content/uploads/", content)
     content = re.sub(r"https?://[^/]+/files/", f"{base}/wp-content/uploads/", content)
     content = re.sub(r"(?<=[\"'=])/?files/", "wp-content/uploads/", content)
@@ -126,10 +129,11 @@ def generate_wxr(
     * ``attachments`` – liste de médias ``{url, title}`` → items ``<wp:attachment>``
       (l'importeur WordPress rattache alors les fichiers aux articles).
     """
-    if authors is None:
-        authors = {slug: f"{slug}@backup.noblogs.org"}
-
     clean_site_url = site_url.rstrip("/")
+    domain = urlparse(clean_site_url).netloc or "backup.noblogs.org"
+
+    if authors is None:
+        authors = {slug: f"{slug}@{domain}"}
 
     xml: list[str] = []
     xml.append('<?xml version="1.0" encoding="UTF-8" ?>')
