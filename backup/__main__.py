@@ -35,11 +35,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--base-url", "-b", help="URL de base alternative (défaut https://<slug>.noblogs.org).")
     p.add_argument("--out-dir", "-o", default="backups", help="Dossier de sortie des ZIP (défaut : ./backups).")
     p.add_argument("--no-wayback", action="store_true", help="Désactiver la récupération via archive.org / Wayback.")
+    p.add_argument("--no-plugins", action="store_true", help="Ne pas embarquer les plugins NoBlogs dans le ZIP.")
     p.add_argument("--no-media", action="store_true", help="Ne pas télécharger les médias.")
     p.add_argument("--workers", "-j", type=int, default=6, help="Téléchargements médias simultanés (défaut 6).")
     p.add_argument("--keep-uploads", action="store_true", help="Conserver le dossier uploads à côté du ZIP.")
     p.add_argument("--force", action="store_true", help="Effacer et re-télécharger le dossier uploads existant.")
     p.add_argument("--unpack", action="store_true", help="Préserver le contenu déployé (uploads/ + XML) dans <out-dir>/<slug>/.")
+    p.add_argument("--assets-cache", metavar="DIR", help="Dossier de cache du bundle thèmes/plugins (évite de re-télécharger).")
     p.add_argument("--version", action="version", version=f"noblogs-backup {__version__}")
     return p.parse_args(argv)
 
@@ -56,6 +58,10 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
     print(f"\n=== Sauvegarde de {slug} ===", flush=True)
     out_root = Path(args.out_dir).expanduser()
     out_root.mkdir(parents=True, exist_ok=True)
+
+    if getattr(args, "assets_cache", None):
+        from .assets import set_cache_dir
+        set_cache_dir(Path(args.assets_cache).expanduser())
 
     scraper = NoblogsScraper(slug, base_url=args.base_url)
     scraped: ScrapedBlog = scraper.scrape_all()
@@ -141,6 +147,23 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
             use_wayback=not args.no_wayback,
         )
 
+    # --- Plugins NoBlogs + mu-plugins + wplang (miroir github.com/muarf/noblogs-assets)
+    from .assets import bundle_mu_plugins, bundle_plugins, bundle_wplang
+
+    plugins_dir = None
+    mu_plugins_dir = None
+    wplang_dir = None
+    if not args.no_plugins:
+        print("Embarquement des plugins NoBlogs…", flush=True)
+        plugins_dir = bundle_plugins(dest_dir=stage_dir)
+        mu_plugins_dir_path = Path(stage_dir) / "mu-plugins"
+        mu_plugins_dir_path.mkdir(parents=True, exist_ok=True)
+        if bundle_mu_plugins(dest_dir=mu_plugins_dir_path):
+            mu_plugins_dir = mu_plugins_dir_path
+        wplang_dir = bundle_wplang(dest_dir=Path(stage_dir) / "wplang")
+        if plugins_dir is not None:
+            print(f"  {len(list(plugins_dir.iterdir()))} plugins embarqués", flush=True)
+
     # --- ZIP
     zip_file = package_backup(
         slug=slug,
@@ -155,17 +178,23 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
         media_stats=media_stats,
         fidelity=fidelity,
         theme_dir=theme_dir,
+        plugins_dir=plugins_dir,
+        mu_plugins_dir=mu_plugins_dir,
+        wplang_dir=wplang_dir,
     )
     size = human_size(zip_file.stat().st_size)
 
     if not args.keep_uploads:
         shutil.rmtree(stage_dir / "uploads", ignore_errors=True)
     if not args.unpack:
-        shutil.rmtree(stage_dir / "fidelity_media", ignore_errors=True)
-        shutil.rmtree(stage_dir / "theme", ignore_errors=True)
+        for sub in ("fidelity_media", "theme", "plugins", "mu-plugins", "wplang"):
+            shutil.rmtree(stage_dir / sub, ignore_errors=True)
         for f in stage_dir.iterdir():
             if f.name != "uploads":
-                f.unlink(missing_ok=True)
+                if f.is_dir():
+                    shutil.rmtree(f, ignore_errors=True)
+                else:
+                    f.unlink(missing_ok=True)
 
     print(f"  ✅ Archive créée : {zip_file} ({size})", flush=True)
     return {"slug": slug, "zip": str(zip_file), "size": size}

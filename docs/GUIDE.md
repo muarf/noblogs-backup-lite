@@ -44,9 +44,9 @@ backups/monblog-noblogs-backup.zip
 
 ## Étape 3 — Garder votre sauvegarde au chaud
 
-Le `.zip` est **votre sauvegarde complète** : articles, pages, médias, thème, fidélité visuelle.
+Le `.zip` est **votre sauvegarde complète** : articles, pages, médias, thème, plugins NoBlogs et fidélité visuelle.
 
-Copiez-le sur plusieurs supports (clé USB, disque chiffré, cloud) et rangez une copie chez une autre personne du collectif. Vous pourrez ensuite le réimporter sur n'importe quel WordPress (*Outils → Importer → WordPress*).
+Copiez-le sur plusieurs supports (clé USB, disque chiffré, cloud) et rangez une copie chez une autre personne du collectif. Vous pourrez ensuite le réimporter sur n'importe quel WordPress (*Outils → Importer → WordPress*). Il contient aussi les plugins et le thème du blog original, prêts à être réinstallés auprès de votre hébergeur.
 
 ---
 

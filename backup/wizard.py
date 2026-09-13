@@ -67,10 +67,13 @@ def _banner() -> None:
 
 
 def _backup_args(slug: str, out_dir: Path, force: bool = False) -> argparse.Namespace:
+    assets_cache = Path(os.getenv("NOBLOGS_ASSETS_CACHE", str(Path.home() / ".cache" / "noblogs-assets")))
     return argparse.Namespace(
         base_url=None,
         out_dir=str(out_dir),
         no_wayback=False,
+        no_plugins=False,
+        assets_cache=str(assets_cache),
         no_media=False,
         workers=6,
         keep_uploads=True,
