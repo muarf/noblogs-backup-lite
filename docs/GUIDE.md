@@ -1,6 +1,6 @@
-# Guide militant·e — Sauvegarder son blog NoBlogs
+# Guide — Sauvegarder son blog NoBlogs
 
-**3 étapes. Pas de jargon.**
+**3 étapes.**
 
 ---
 
@@ -61,5 +61,3 @@ Demandez à quelqu'un de votre collectif de lancer `./noblogs` pour vous — une
 **Sur Tails, mes fichiers disparaissent au redémarrage ?**  
 Oui, sauf si vous activez le stockage persistant ou copiez le `.zip` sur une clé USB **avant** d'éteindre.
 
-**Et le miroir statique (Hugo) ?**  
-Prévu pour une prochaine version — pour l'instant, le backup est réimportable sur WordPress.
