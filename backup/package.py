@@ -1,13 +1,10 @@
 """package.py — Emballage de la sauvegarde en ZIP autonome complet.
 
-Produit une archive redéployable à l'identique sur n'importe quelle
-installation WordPress :
+Produit une archive qui contient tout le blog NoBlogs :
 * ``wordpress-export.xml``  – export WXR 1.2 (articles, pages, catégories)
 * ``uploads/``              – tous les médias
 * ``theme/<theme>/``        – le thème WordPress actif
 * ``fidelity.json``         – sidebars, menus, CSS, couleurs, header image
-* ``restore.sh``            – script de restauration complète
-* ``restore_parity.php``    – logique WP de fidélité (widgets, menus, theme_mods)
 * ``README.md``, ``metadata.json``
 """
 from __future__ import annotations
@@ -17,9 +14,6 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-
-_PACKAGE_DIR = Path(__file__).resolve().parent
-_DOCS_DIR = _PACKAGE_DIR.parent / "docs"
 
 
 def human_size(num: int) -> str:
@@ -35,7 +29,6 @@ def _write_readme(stage: Path, slug: str, original_url: str, has_fidelity: bool,
     fidelity_note = ""
     if has_fidelity:
         fidelity_note = """- **`fidelity.json`** — sidebars, menus, CSS personnalisé, couleurs, bannière (fidélité visuelle).
-- **`restore_parity.php`** — application automatique de la fidélité via WP-CLI.
 """
     theme_note = ""
     if has_theme:
@@ -48,28 +41,12 @@ Source : {original_url}
 
 ## Contenu
 * **`wordpress-export.xml`** — export WXR 1.2 (articles, pages, catégories), compatible WordPress.
-* **`uploads/`** — tous les médias, à placer dans `wp-content/uploads/`.
-{fidelity_note}{theme_note}* **`restore.sh`** — restauration complète en une commande (WP-CLI).
-* **`metadata.json`** — informations sur la sauvegarde.
+* **`uploads/`** — tous les médias, avec la structure de dossiers de l'original.
+{fidelity_note}{theme_note}* **`metadata.json`** — informations sur la sauvegarde.
 
-## Restauration complète avec `restore.sh` (recommandé, VPS / Docker / WP-CLI)
-Dézippez l'archive, puis lancez :
-```bash
-./restore.sh                              # assistant interactif (détection auto du WordPress)
-WP=/var/www/html ./restore.sh             # cible explicite
-WP=/var/www/html URL=https://monsite.org ./restore.sh  # avec remplacement d'URLs
-```
-L'assistant détecte automatiquement vos installations WordPress, propose un menu
-numéroté, vous demande la nouvelle URL, affiche un **résumé avant exécution** puis
-applique : médias → thème → import WXR → URLs → sidebars/menus/CSS/couleurs →
-`<!--more-->` → nettoyage (contenu par défaut WP supprimé avec précaution).
-
-## Restauration manuelle (interface WordPress)
-1. Ouvrez **Outils > Importer > WordPress** (installez l'extension si demandé).
-2. Importez `wordpress-export.xml` avec l'option *"Télécharger et importer les fichiers joints"*.
-3. Copiez le contenu de `uploads/` dans `wp-content/uploads/`.
-4. Copiez `theme/*` dans `wp-content/themes/` et activez le thème.
-5. Appliquez la fidélité : `wp eval-file restore_parity.php --path=/votre/wordpress`
+L'export Wordpress est réimplantable sur n'importe quelle instance WordPress
+(*Outils > Importer > WordPress*), et `uploads/` se replacent dans
+`wp-content/uploads/`.
 """, encoding="utf-8")
 
 
@@ -118,20 +95,8 @@ def package_backup(
             if media_src.exists() and any(media_src.iterdir()):
                 shutil.copytree(media_src, stage / "fidelity_media", dirs_exist_ok=True)
 
-        # 5. Scripts de restauration + README + métadonnées
-        shutil.copy(_PACKAGE_DIR / "restore.sh", stage / "restore.sh")
-        shutil.copy(_PACKAGE_DIR / "restore_parity.php", stage / "restore_parity.php")
-        (stage / "restore.sh").chmod(0o755)
+        # 5. README + métadonnées
         _write_readme(stage, slug, original_url, has_fidelity, has_theme)
-
-        for guide in (
-            "GUIDE-MILITANTE.md",
-            "GUIDE-WORDPRESS-COM.md",
-            "GUIDE-LOCAL.md",
-        ):
-            src = _DOCS_DIR / guide
-            if src.exists():
-                shutil.copy(src, stage / guide)
 
         media_success = sum(v for k, v in media_stats.items() if k not in ("failed", "urls"))
         (stage / "metadata.json").write_text(

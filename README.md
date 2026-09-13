@@ -1,30 +1,21 @@
-# noblogs-backup
+# noblogs-backup-lite
 
-Sauvegarde **complète et autonome** de n'importe quel blog [NoBlogs](https://noblogs.org), avec republication sur **WordPress.com** ou **WordPress local**.
+Sauvegarde **complète et autonome** de n'importe quel blog [NoBlogs](https://noblogs.org), empaquetée dans un ZIP. C'est la version épurée de `noblogs-backup` : **sauvegarde uniquement** — sans restauration ni republication.
 
-## Démarrage militant (1 commande / 1 clic)
+## Démarrage militant (1 commande)
 
 | OS | Comment lancer |
 |---|---|
 | Tails / Ubuntu / macOS | Terminal → `./noblogs` |
-| macOS | Double-clic sur `noblogs.command` |
-| Windows | Double-clic sur `noblogs.bat` |
 
-L'assistant vous guide : slug → sauvegarde → republication WordPress.com ou locale.
-La première fois, l'outil installe automatiquement Python dépendances (1 à 2 min).
-
-> Pour un .exe Windows sans Python installé : `./noblogs distrib` (à venir).
+L'assistant vous demande le slug de votre blog puis sauvegarde tout dans `backups/<slug>-noblogs-backup.zip`.
+La première fois seulement, l'outil installe automatiquement les dépendances Python (1 à 2 min).
 
 | Commande | Action |
 |---|---|
 | `./noblogs` | Assistant interactif |
 | `./noblogs sauvegarder monblog` | Sauvegarde → `backups/monblog-noblogs-backup.zip` |
-| `./noblogs republier backups/monblog-noblogs-backup.zip` | Guide WordPress.com ou restauration locale |
 | `./noblogs aide` | Aide |
-
-Guides détaillés : [`docs/GUIDE-MILITANTE.md`](docs/GUIDE-MILITANTE.md)
-
----
 
 ## Fonctionnalités
 
@@ -37,18 +28,12 @@ Guides détaillés : [`docs/GUIDE-MILITANTE.md`](docs/GUIDE-MILITANTE.md)
 | **Archive.org** | Snapshot Wayback + API `wayback/available` |
 | **Thème** | Téléchargement du thème actif (WordPress.org, blog d'origine, archive.org) |
 | **Fidélité** | Sidebars, menus, CSS, couleurs, bannière |
-| **WordPress.com** | Export WXR + guide pas-à-pas inclus dans le ZIP |
-| **Local identique** | `./restore.sh` → médias + thème + WXR + fidélité |
 | **Portable** | `requirements.txt` minimal (requests + beautifulsoup4) |
-
-> **À venir** : export statique Hugo (miroir `.onion` / GDrive) — voir infrastructure `mirroir` sur bigarm.
-
----
 
 ## Installation manuelle (développeur·euses)
 
 ```bash
-cd noblogs-backup
+cd noblogs-backup-lite
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python3 -m backup monblog
@@ -74,31 +59,11 @@ monblog-noblogs-backup.zip
 ├── uploads/                  # tous les médias
 ├── theme/<theme>/            # thème actif
 ├── fidelity.json             # widgets, menus, CSS, couleurs
-├── restore.sh                # restauration locale identique
-├── restore_parity.php
-├── GUIDE-MILITANTE.md
-├── GUIDE-WORDPRESS-COM.md
-├── GUIDE-LOCAL.md
 ├── README.md
 └── metadata.json
 ```
 
-## Restauration locale
-
-```bash
-unzip monblog-noblogs-backup.zip && cd monblog-noblogs-backup
-./restore.sh
-```
-
-Ou via l'outil : `./noblogs republier backups/monblog-noblogs-backup.zip`
-
-## Republication WordPress.com
-
-1. Créez un site sur [wordpress.com](https://wordpress.com)
-2. **Outils → Importer → WordPress**
-3. Uploadez `wordpress-export.xml` (cochez *Télécharger les pièces jointes*)
-
-Guide complet dans chaque archive : `GUIDE-WORDPRESS-COM.md`
+L'export est réimplantable sur n'importe quelle instance WordPress (*Outils → Importer → WordPress*), et `uploads/` se replacent dans `wp-content/uploads/`.
 
 ## Licence
 

@@ -1,3 +1,3 @@
-"""noblogs-backup : Sauvegarde complète et autonome de blogs NoBlogs."""
+"""noblogs-backup-lite : Sauvegarde complète et autonome de blogs NoBlogs."""
 
-__version__ = "1.3.0"
+__version__ = "2.0.0-lite"

@@ -6,7 +6,7 @@
 
 ## Étape 1 — Télécharger l'outil
 
-Sur **Ubuntu** ou **macOS**, ouvrez un terminal dans le dossier `noblogs-backup` :
+Sur **Ubuntu** ou **macOS**, ouvrez un terminal dans le dossier `noblogs-backup-lite` :
 
 ```bash
 ./noblogs
@@ -15,7 +15,7 @@ Sur **Ubuntu** ou **macOS**, ouvrez un terminal dans le dossier `noblogs-backup`
 Sur **Tails** : Applications → Terminal, allez dans le dossier (de préférence sur votre **stockage persistant** ou une clé USB) :
 
 ```bash
-cd ~/Persistent/noblogs-backup   # ou le chemin de votre clé
+cd ~/Persistent/noblogs-backup-lite   # ou le chemin de votre clé
 ./noblogs
 ```
 
@@ -42,18 +42,11 @@ backups/monblog-noblogs-backup.zip
 
 ---
 
-## Étape 3 — Republier (quand vous en avez besoin)
+## Étape 3 — Garder votre sauvegarde au chaud
 
-```bash
-./noblogs republier backups/monblog-noblogs-backup.zip
-```
+Le `.zip` est **votre sauvegarde complète** : articles, pages, médias, thème, fidélité visuelle.
 
-Choisissez :
-
-- **[1] WordPress.com** — le plus simple : créez un compte, importez le fichier XML
-- **[2] WordPress local** — reproduction à l'identique (thème, menus, images)
-
-Les guides détaillés sont **dans le ZIP** et s'affichent automatiquement.
+Copiez-le sur plusieurs supports (clé USB, disque chiffré, cloud) et rangez une copie chez une autre personne du collectif. Vous pourrez ensuite le réimporter sur n'importe quel WordPress (*Outils → Importer → WordPress*).
 
 ---
 
@@ -69,4 +62,4 @@ Demandez à quelqu'un de votre collectif de lancer `./noblogs` pour vous — une
 Oui, sauf si vous activez le stockage persistant ou copiez le `.zip` sur une clé USB **avant** d'éteindre.
 
 **Et le miroir statique (Hugo) ?**  
-Prévu pour une prochaine version — pour l'instant, WordPress.com ou local.
+Prévu pour une prochaine version — pour l'instant, le backup est réimportable sur WordPress.

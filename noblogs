@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# noblogs — Lanceur multi-OS pour noblogs-backup (Tails / Ubuntu / macOS).
+# noblogs — Lanceur multi-OS pour noblogs-backup-lite (Tails / Ubuntu / macOS).
 # La logique interactive est en Python (backup/wizard.py) :
 #   ./noblogs                  → assistant interactif
 #   ./noblogs sauvegarder S    → sauvegarde complète
-#   ./noblogs republier [ZIP]  → republication WordPress.com ou locale
 #   ./noblogs aide             → aide
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-VERSION="1.3.0"
+VERSION="2.0.0-lite"
 
 # --- Couleurs (désactivées si pas de terminal) ---
 if [ -t 1 ]; then
