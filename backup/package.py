@@ -15,6 +15,7 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from .i18n import t
 
 
 def human_size(num: int) -> str:
@@ -36,17 +37,15 @@ def _write_readme(
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     fidelity_note = ""
     if has_fidelity:
-        fidelity_note = """- **`fidelity.json`** — sidebars, menus, CSS personnalisé, couleurs, bannière (fidélité visuelle).
-"""
+        fidelity_note = t("- **`fidelity.json`** — sidebars, menus, CSS personnalisé, couleurs, bannière (fidélité visuelle).\n")
     theme_note = ""
     if has_theme:
-        theme_note = """- **`theme/`** — le thème WordPress actif du blog original.
-"""
+        theme_note = t("- **`theme/`** — le thème WordPress actif du blog original.\n")
     plugins_note = ""
     if has_plugins:
-        plugins_note = """- **`plugins/`** — les plugins NoBlogs (nospam, classic-editor, …), avec `mu-plugins/` et `wplang/`.
-"""
-    (stage / "README.md").write_text(f"""# Sauvegarde NoBlogs — {slug}
+        plugins_note = t("- **`plugins/`** — les plugins NoBlogs (nospam, classic-editor, …), avec `mu-plugins/` et `wplang/`.\n")
+
+    readme_text = t("""# Sauvegarde NoBlogs — {slug}
 
 Export complet du blog **{slug}**, réalisé le {now}.
 Source : {original_url}
@@ -59,7 +58,15 @@ Source : {original_url}
 L'export Wordpress est réimplantable sur n'importe quelle instance WordPress
 (*Outils > Importer > WordPress*), et `uploads/` se replacent dans
 `wp-content/uploads/`.
-""", encoding="utf-8")
+""").format(
+        slug=slug,
+        now=now,
+        original_url=original_url,
+        fidelity_note=fidelity_note,
+        theme_note=theme_note,
+        plugins_note=plugins_note
+    )
+    (stage / "README.md").write_text(readme_text, encoding="utf-8")
 
 
 def package_backup(

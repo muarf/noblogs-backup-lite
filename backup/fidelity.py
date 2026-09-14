@@ -21,6 +21,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from .i18n import t
 from .http import fetch_url
 
 # ---------------------------------------------------------------- constants
@@ -412,7 +413,7 @@ def extract_fidelity(
             if st == 200 and data and len(data) > 100:
                 dest.write_bytes(data)
                 downloaded.append(label)
-                print(f"   [{label}] {dest.name} ({len(data)} octets)")
+                print(t("   [{}] {} ({} octets)").format(label, dest.name, len(data)))
 
     # Background image download
     bg_img = bg.get("background_image")
@@ -424,7 +425,7 @@ def extract_fidelity(
         if st == 200 and data and len(data) > 100:
             bg_dest.write_bytes(data)
             downloaded.append("background-image")
-            print(f"   [background-image] {bg_dest.name} ({len(data)} octets)")
+            print(t("   [background-image] {} ({} octets)").format(bg_dest.name, len(data)))
             bg["background_image_local"] = bg_dest.name
 
     return {

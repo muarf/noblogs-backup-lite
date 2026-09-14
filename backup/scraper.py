@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from bs4 import BeautifulSoup
 
+from .i18n import t
 from .html_clean import clean_content, grab_balanced
 from .http import fetch_url
 
@@ -52,10 +53,10 @@ class NoblogsScraper:
     def scrape_all(self) -> ScrapedBlog:
         meta = self.detect_meta()
         posts = self.scrape_feed()
-        print(f"  {len(posts)} articles trouvés dans le flux RSS", flush=True)
+        print(t("  {} articles trouvés dans le flux RSS").format(len(posts)), flush=True)
         posts = self.scrape_post_contents(posts)
         pages = self.scrape_pages()
-        print(f"  {len(pages)} pages statiques trouvées", flush=True)
+        print(t("  {} pages statiques trouvées").format(len(pages)), flush=True)
         return ScrapedBlog(
             slug=self.slug,
             title=meta["title"],
@@ -86,7 +87,7 @@ class NoblogsScraper:
                     if m:
                         theme = m.group(1)
                         break
-        print(f"  Titre : {title!r}, thème : {theme!r}", flush=True)
+        print(t("  Titre : {!r}, thème : {!r}").format(title, theme), flush=True)
         return {"title": title, "theme": theme}
 
     # ---------------------------------------------------------------- articles
@@ -136,7 +137,7 @@ class NoblogsScraper:
             if not page_items:
                 break
             items.extend(page_items)
-            print(f"  page {paged}: +{len(page_items)} articles (total: {len(items)})", flush=True)
+            print(t("  page {}: +{} articles (total: {})").format(paged, len(page_items), len(items)), flush=True)
         return items
 
     def scrape_post_contents(self, posts_meta: list[dict]) -> list[dict]:

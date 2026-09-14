@@ -16,6 +16,7 @@ import zipfile
 from pathlib import Path
 
 from . import __version__
+from .i18n import t
 from .__main__ import backup_one
 from .package import human_size
 
@@ -68,7 +69,7 @@ def _read(prompt: str) -> str:
 def _banner() -> None:
     print("")
     print("  ╔═══════════════════════════════════════════════╗")
-    print("  ║   NoBlogs Backup — sauvegarde                 ║")
+    print(t("  ║   NoBlogs Backup — sauvegarde                 ║"))
     print("  ╚═══════════════════════════════════════════════╝")
     print("")
 
@@ -93,7 +94,7 @@ def _backup_args(slug: str, out_dir: Path, force: bool = False) -> argparse.Name
 def run_backup(slug: str, out_dir: Path, force: bool = False) -> dict:
     """Lance la sauvegarde complète et retourne le résultat de backup_one."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"\nSauvegarde de « {slug} » en cours…\n", flush=True)
+    print(t("\nSauvegarde de « {} » en cours…\n").format(slug), flush=True)
     return backup_one(slug, _backup_args(slug, out_dir, force=force))
 
 
@@ -107,8 +108,8 @@ def _zip_metadata(zip_path: Path) -> dict:
 
 def _media_force_prompt() -> bool:
     print("")
-    print("  Médias déjà téléchargés : réutiliser par défaut, forcer pour re-télécharger.")
-    choice = _read("  [r]éutiliser / [f]orcer le re-téléchargement [r] : ").strip().lower()
+    print(t("  Médias déjà téléchargés : réutiliser par défaut, forcer pour re-télécharger."))
+    choice = _read(t("  [r]éutiliser / [f]orcer le re-téléchargement [r] : ")).strip().lower()
     return choice.startswith("f")
 
 
@@ -119,7 +120,7 @@ def _reuse_media_from_zip(zip_path: Path, out_dir: Path, slug: str) -> None:
             with zipfile.ZipFile(zip_path) as zf:
                 names = [n for n in zf.namelist() if n.startswith("uploads/") and not n.endswith("/")]
                 if not names:
-                    print("  ⚠ Aucun média dans le ZIP (rien à réutiliser).")
+                    print(t("  ⚠ Aucun média dans le ZIP (rien à réutiliser)."))
                     return
                 target.mkdir(parents=True, exist_ok=True)
                 for n in names:
@@ -127,9 +128,9 @@ def _reuse_media_from_zip(zip_path: Path, out_dir: Path, slug: str) -> None:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     with zf.open(n) as src, open(dest, "wb") as out:
                         shutil.copyfileobj(src, out)
-            print(f"  Réutilisation de {len(names)} médias depuis le ZIP.")
+            print(t("  Réutilisation de {} médias depuis le ZIP.").format(len(names)))
         except Exception as e:
-            print(f"  ⚠ Médias du ZIP non réutilisés : {e}")
+            print(t("  ⚠ Médias du ZIP non réutilisés : {}").format(e))
 
 
 def _existing_backup_menu(slug: str, out_dir: Path, zip_path: Path) -> int:
@@ -142,27 +143,27 @@ def _existing_backup_menu(slug: str, out_dir: Path, zip_path: Path) -> int:
     theme = meta.get("theme") or "?"
     size = human_size(zip_path.stat().st_size)
 
-    print(f"\n  Backup existant : {zip_path.name}")
-    print(f"    {title} — {posts} articles, {pages} pages, {media} médias")
-    print(f"    créé le {created} — thème {theme} — {size}")
+    print(t("\n  Backup existant : {}").format(zip_path.name))
+    print(t("    {} — {} articles, {} pages, {} médias").format(title, posts, pages, media))
+    print(t("    créé le {} — thème {} — {}").format(created, theme, size))
     print("")
-    print("  [1]  Sauvegarde fraîche (re-scrape le blog)")
-    print("  [2]  Quitter")
+    print(t("  [1]  Sauvegarde fraîche (re-scrape le blog)"))
+    print(t("  [2]  Quitter"))
     print("")
-    choice = _read("  Votre choix : ") or "1"
+    choice = _read(t("  Votre choix : ")) or "1"
     if choice == "1":
         force = _media_force_prompt()
         if not force:
             _reuse_media_from_zip(zip_path, out_dir, slug)
         result = run_backup(slug, out_dir, force=force)
         if result.get("error"):
-            print(f"\n  ✗ Échec de la sauvegarde de « {slug} » : {result['error']}\n")
+            print(t("\n  ✗ Échec de la sauvegarde de « {} » : {}\n").format(slug, result['error']))
             return 1
         zip_file = result.get("zip", "")
         if zip_file and Path(zip_file).exists():
-            print(f"\n  Sauvegarde terminée !\n  Archive : {zip_file}\n")
+            print(t("\n  Sauvegarde terminée !\n  Archive : {}\n").format(zip_file))
         return 0
-    print("  Au revoir.")
+    print(t("  Au revoir."))
     return 0
 
 
@@ -172,21 +173,21 @@ def interactive_wizard() -> int:
     if plat == "tails":
         pers = Path.home() / "Persistent"
         if pers.is_dir():
-            print("  Tails détecté — stockage persistant disponible.")
-            print("  Vos sauvegardes survivront au redémarrage.")
+            print(t("  Tails détecté — stockage persistant disponible."))
+            print(t("  Vos sauvegardes survivront au redémarrage."))
         else:
-            print("  Tails détecté — sauvegardez le .zip sur une clé USB")
-            print("  avant d'éteindre (pas de stockage persistant).")
+            print(t("  Tails détecté — sauvegardez le .zip sur une clé USB"))
+            print(t("  avant d'éteindre (pas de stockage persistant)."))
     else:
-        print(f"  {plat[0].upper() + plat[1:]} détecté.")
+        print(t("  {} détecté.").format(plat[0].upper() + plat[1:]))
     print("")
-    print("  Le slug de votre blog : la première partie de l'adresse")
-    print("  Ex. https://monblog.noblogs.org → monblog")
+    print(t("  Le slug de votre blog : la première partie de l'adresse"))
+    print(t("  Ex. https://monblog.noblogs.org → monblog"))
     print("")
-    slug = _read("  Slug de votre blog : ")
+    slug = _read(t("  Slug de votre blog : "))
     slug = slug_from_input(slug)
     if not slug:
-        print("  ✗ Slug vide.")
+        print(t("  ✗ Slug vide."))
         return 1
     out_dir = Path(os.getenv("NOBLOGS_OUT", str(DEFAULT_OUT)))
     zip_path = out_dir / f"{slug}-noblogs-backup.zip"
@@ -196,17 +197,17 @@ def interactive_wizard() -> int:
 
     result = run_backup(slug, out_dir)
     if result.get("error"):
-        print(f"\n  ✗ Échec de la sauvegarde de « {slug} » : {result['error']}\n")
+        print(t("\n  ✗ Échec de la sauvegarde de « {} » : {}\n").format(slug, result['error']))
         return 1
     zip_file = result.get("zip", "")
     if zip_file and Path(zip_file).exists():
-        print(f"\n  Sauvegarde terminée !\n  Archive : {zip_file}\n")
+        print(t("\n  Sauvegarde terminée !\n  Archive : {}\n").format(zip_file))
     return 0
 
 
 def show_help() -> None:
     _banner()
-    print(f"""  Commandes
+    print(t("""  Commandes
 
     ./noblogs                      Assistant interactif
     ./noblogs sauvegarder SLUG     Sauvegarde complète → backups/SLUG-noblogs-backup.zip
@@ -215,8 +216,8 @@ def show_help() -> None:
   Prérequis
     Python 3 (auto-installé par le lanceur au premier usage)
 
-  Version {__version__}
-""")
+  Version {}
+""").format(__version__))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -232,20 +233,20 @@ def main(argv: list[str] | None = None) -> int:
         force = any(a in ("--force", "-f") for a in rest)
         pos = [a for a in rest if a not in ("--force", "-f")]
         if not pos:
-            print("  ✗ Usage : ./noblogs sauvegarder SLUG [--force]")
+            print(t("  ✗ Usage : ./noblogs sauvegarder SLUG [--force]"))
             return 1
         slug = slug_from_input(pos[0])
         if not slug:
-            print("  ✗ Slug vide.")
+            print(t("  ✗ Slug vide."))
             return 1
         out_dir = Path(os.getenv("NOBLOGS_OUT", str(DEFAULT_OUT)))
         result = run_backup(slug, out_dir, force=force)
         if result.get("error"):
-            print(f"  ✗ Échec : {result['error']}")
+            print(t("  ✗ Échec : {}").format(result['error']))
             return 1
         zip_file = result.get("zip", "")
         if zip_file and Path(zip_file).exists():
-            print(f"\n  Sauvegarde terminée !\n  Archive : {zip_file}\n")
+            print(t("\n  Sauvegarde terminée !\n  Archive : {}\n").format(zip_file))
         return 0
     if cmd in ("aide", "help", "-h", "--help"):
         show_help()
@@ -253,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     if cmd in ("version", "-V", "--version"):
         print(f"noblogs-backup {__version__}")
         return 0
-    print(f"  ✗ Commande inconnue : {cmd}")
+    print(t("  ✗ Commande inconnue : {}").format(cmd))
     show_help()
     return 1
 

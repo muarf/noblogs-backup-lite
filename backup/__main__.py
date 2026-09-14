@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import __version__
+from .i18n import t
 from .fidelity import extract_fidelity
 from .media import download_media
 from .package import human_size, package_backup
@@ -55,7 +56,7 @@ def _slug_from_arg(arg: str) -> str:
 
 
 def backup_one(slug: str, args: argparse.Namespace) -> dict:
-    print(f"\n=== Sauvegarde de {slug} ===", flush=True)
+    print(t("\n=== Sauvegarde de {} ===").format(slug), flush=True)
     out_root = Path(args.out_dir).expanduser()
     out_root.mkdir(parents=True, exist_ok=True)
 
@@ -67,14 +68,14 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
     scraped: ScrapedBlog = scraper.scrape_all()
     posts = scraped.posts
     pages = scraped.pages
-    print(f"  {len(posts)} articles, {len(pages)} pages", flush=True)
+    print(t("  {} articles, {} pages").format(len(posts), len(pages)), flush=True)
 
     if not posts and not pages:
         print(
-            f"\n  ❌ ERREUR : aucun contenu trouvé pour « {slug} ».\n"
-            f"     Vérifiez le slug (ex. monblog pour monblog.noblogs.org).\n"
-            f"     Astuce : si le blog est mort, la récupération archive.org est\n"
-            f"     activée par défaut — ne lancez pas avec --no-wayback.",
+            t("\n  ❌ ERREUR : aucun contenu trouvé pour « {} ».\n"
+              "     Vérifiez le slug (ex. monblog pour monblog.noblogs.org).\n"
+              "     Astuce : si le blog est mort, la récupération archive.org est\n"
+              "     activée par défaut — ne lancez pas avec --no-wayback.").format(slug),
             flush=True,
         )
         return {"slug": slug, "zip": "", "size": "", "error": "empty"}
@@ -83,9 +84,9 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
     uploads_dir = out_root / slug / "uploads"
     media_stats: dict = {"urls": 0, "direct": 0, "wayback": 0, "wayback-api": 0, "failed": 0, "skipped": 0}
     if not args.no_media:
-        print("Extraction des URLs de médias…", flush=True)
+        print(t("Extraction des URLs de médias…"), flush=True)
         media_urls = scraper.extract_all_media(posts, pages)
-        print(f"  {len(media_urls)} médias détectés", flush=True)
+        print(t("  {} médias détectés").format(len(media_urls)), flush=True)
         if media_urls:
             if args.force and uploads_dir.exists():
                 shutil.rmtree(uploads_dir)
@@ -96,14 +97,14 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
                 workers=args.workers,
             )
             success = sum(v for k, v in media_stats.items() if k != "failed")
-            print(f"  Médias : {success} ok / {media_stats.get('failed', 0)} échecs", flush=True)
+            print(t("  Médias : {} ok / {} échecs").format(success, media_stats.get('failed', 0)), flush=True)
             media_stats["urls"] = len(media_urls)
     else:
-        print("Téléchargement des médias désactivé (--no-media).", flush=True)
+        print(t("Téléchargement des médias désactivé (--no-media)."), flush=True)
         uploads_dir.mkdir(parents=True, exist_ok=True)
 
     # --- WXR (+ pièces jointes pour les médias téléchargés)
-    print("Génération de l'export WXR 1.2…", flush=True)
+    print(t("Génération de l'export WXR 1.2…"), flush=True)
     stage_dir = out_root / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
     from .media import relative_dest
@@ -130,13 +131,13 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
     )
 
     # --- Fidélité visuelle (theme, sidebars, menus, CSS, couleurs, bannière)
-    print("Extraction de la fidélité visuelle (widgets, menus, CSS, couleurs)…", flush=True)
+    print(t("Extraction de la fidélité visuelle (widgets, menus, CSS, couleurs)…"), flush=True)
     fidelity = extract_fidelity(slug, scraped.base_url, scraped.theme, stage_dir)
     if fidelity.get("error"):
-        print(f"  Fidélité partielle : {fidelity['error']}", flush=True)
+        print(t("  Fidélité partielle : {}").format(fidelity['error']), flush=True)
 
     # --- Téléchargement du thème
-    print("Téléchargement du thème…", flush=True)
+    print(t("Téléchargement du thème…"), flush=True)
     theme_dir = None
     theme_slug = fidelity.get("theme") or scraped.theme
     if theme_slug:
@@ -196,7 +197,7 @@ def backup_one(slug: str, args: argparse.Namespace) -> dict:
                 else:
                     f.unlink(missing_ok=True)
 
-    print(f"  ✅ Archive créée : {zip_file} ({size})", flush=True)
+    print(t("  ✅ Archive créée : {} ({})").format(zip_file, size), flush=True)
     return {"slug": slug, "zip": str(zip_file), "size": size}
 
 
@@ -208,8 +209,8 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parse_args(args_list)
     if not args.slugs:
-        print("Erreur : au moins un slug est requis.", file=sys.stderr)
-        print("Usage : python -m backup <slug> [options]", file=sys.stderr)
+        print(t("Erreur : au moins un slug est requis."), file=sys.stderr)
+        print(t("Usage : python -m backup <slug> [options]"), file=sys.stderr)
         return 2
 
     slugs: list[str] = []
@@ -227,14 +228,14 @@ def main(argv: list[str] | None = None) -> int:
     else:
         results.append(backup_one(slugs[0], args))
 
-    print("\n=== BILAN ===")
+    print(t("\n=== BILAN ==="))
     failed = False
     for r in results:
         if r.get("error"):
-            print(f"  ❌ {r['slug']}: ÉCHEC — {r['error']}")
+            print(t("  ❌ {}: ÉCHEC — {}").format(r['slug'], r['error']))
             failed = True
         else:
-            print(f"  ✅ {r['slug']}: {r['zip']} ({r['size']})")
+            print(t("  ✅ {}: {} ({})").format(r['slug'], r['zip'], r['size']))
     return 1 if failed else 0
 
 
