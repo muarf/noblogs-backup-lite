@@ -49,7 +49,7 @@ def slug_from_input(raw: str) -> str:
     raw = raw.split("/")[0].split("?")[0]
     # Strip common domains if present, otherwise just use the first part of the domain as slug
     raw = raw.lower()
-    for suffix in (".noblogs.org", ".zvz.fr", ".wordpress.com"):
+    for suffix in (".noblogs.org", ".wordpress.com"):
         if raw.endswith(suffix):
             raw = raw[: -len(suffix)]
             break
