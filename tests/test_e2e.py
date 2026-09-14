@@ -150,6 +150,8 @@ def _args(out_dir, base_url, no_media=False, unpack=True):
         base_url=base_url,
         out_dir=out_dir,
         no_wayback=True,
+        no_plugins=True,
+        assets_cache=None,
         no_media=no_media,
         workers=4,
         keep_uploads=False,

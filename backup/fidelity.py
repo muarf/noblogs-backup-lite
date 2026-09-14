@@ -76,15 +76,18 @@ def _resolve_url(url: str, base: str) -> str:
     return url
 
 
-def _abs_urls(text: str, slug: str) -> str:
+from urllib.parse import urlparse
+
+def _abs_urls(text: str, slug: str, base_url: str) -> str:
+    domain = urlparse(base_url.rstrip("/")).netloc or f"{slug}.noblogs.org"
     text = re.sub(
-        rf"https?://{re.escape(slug)}\.(?:noblogs\.org|zvz\.fr)/(?:files|wp-content/uploads)/",
+        rf"https?://(?:{re.escape(domain)}|{re.escape(slug)}\.noblogs\.org)/(?:files|wp-content/uploads)/",
         "uploads/", text,
     )
     text = re.sub(r"https?://[^/]+/(?:files|wp-content/uploads)/", "uploads/", text)
     text = re.sub(r"/(?:files|wp-content/uploads)/", "uploads/", text)
     text = re.sub(
-        rf"https?://{re.escape(slug)}\.(?:noblogs\.org|zvz\.fr)/",
+        rf"https?://(?:{re.escape(domain)}|{re.escape(slug)}\.noblogs\.org)/",
         "/", text,
     )
     return text
@@ -212,7 +215,7 @@ def _extract_thememod_colors(html: str, theme: str) -> dict:
     return colors
 
 
-def _extract_custom_css(html: str, slug: str) -> str:
+def _extract_custom_css(html: str, slug: str, base_url: str) -> str:
     """Récupère tout le CSS personnalisé (Customizer, inline, couleurs) et réécrit les URLs vers uploads/."""
     rules: list[str] = []
     for m in re.finditer(r"<style([^>]*)>(.*?)</style>", html, re.S | re.I):
@@ -232,7 +235,7 @@ def _extract_custom_css(html: str, slug: str) -> str:
             rules.append(f"/* {block_id} */\n{content.strip()}")
     combined = "\n\n".join(rules)
     combined = _SOURCEURL_COMMENT.sub("", combined)
-    combined = _abs_urls(combined, slug)
+    combined = _abs_urls(combined, slug, base_url)
     return combined
 
 
@@ -245,7 +248,7 @@ def _extract_link_color(custom_css: str) -> str | None:
 
 # ------------------------------------------------------- sidebar extraction
 
-def _extract_sidebars(html: str, slug: str, theme: str) -> dict:
+def _extract_sidebars(html: str, slug: str, theme: str, base_url: str) -> dict:
     """Extrait les widgets de sidebar du HTML original.
 
     Retourne un dict ``{"sidebars": {sb_id: [widget, ...]}, "storage": {...}}``
@@ -299,7 +302,7 @@ def _extract_sidebars(html: str, slug: str, theme: str) -> dict:
                 for hdr in w_copy.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
                     hdr.decompose()
                 content = w_copy.decode_contents()
-            content = _abs_urls(content, slug)
+            content = _abs_urls(content, slug, base_url)
             if "Erreur RSS" in content and "cURL error" in content:
                 continue
             if "Pas d'événement" in content and len(content.strip()) < 50:
@@ -312,7 +315,7 @@ def _extract_sidebars(html: str, slug: str, theme: str) -> dict:
 
 # -------------------------------------------------------- menu extraction
 
-def _extract_menu(html: str, slug: str) -> list[dict]:
+def _extract_menu(html: str, slug: str, base_url: str) -> list[dict]:
     """Extrait la liste de navigation (titres, URLs, sous-menus imbriqués)."""
     soup = BeautifulSoup(html, "html.parser")
     menu_ul = soup.find("ul", class_=lambda c: c and ("nav-menu" in c or "menu" in c))
@@ -323,13 +326,15 @@ def _extract_menu(html: str, slug: str) -> list[dict]:
     if not menu_ul:
         return []
 
+    domain = urlparse(base_url.rstrip("/")).netloc or f"{slug}.noblogs.org"
+
     items: list[dict] = []
     for li in menu_ul.find_all("li", recursive=False):
         a = li.find("a")
         if not a:
             continue
         href = a.get("href", "")
-        href = re.sub(rf"https?://{re.escape(slug)}\.noblogs\.org", "", href)
+        href = re.sub(rf"https?://(?:{re.escape(domain)}|{re.escape(slug)}\.noblogs\.org)", "", href)
         item = {"title": a.text.strip(), "href": href}
         sub = li.find("ul", class_="sub-menu")
         if sub:
@@ -339,7 +344,7 @@ def _extract_menu(html: str, slug: str) -> list[dict]:
                 if not sub_a:
                     continue
                 shref = sub_a.get("href", "")
-                shref = re.sub(rf"https?://{re.escape(slug)}\.noblogs\.org", "", shref)
+                shref = re.sub(rf"https?://(?:{re.escape(domain)}|{re.escape(slug)}\.noblogs\.org)", "", shref)
                 item["children"].append({"title": sub_a.text.strip(), "href": shref})
         items.append(item)
     return items
@@ -385,15 +390,15 @@ def extract_fidelity(
         bg["background_image"] = _resolve_url(bg["background_image"], base_url)
 
     # CSS + couleurs
-    custom_css = _extract_custom_css(html, slug)
+    custom_css = _extract_custom_css(html, slug, base_url)
     theme_colors = _extract_thememod_colors(html, theme)
     link_color = _extract_link_color(custom_css)
 
     # Sidebars / widgets
-    sidebars = _extract_sidebars(html, slug, theme)
+    sidebars = _extract_sidebars(html, slug, theme, base_url)
 
     # Menu
-    menu_items = _extract_menu(html, slug)
+    menu_items = _extract_menu(html, slug, base_url)
 
     # Téléchargement des fichiers médias fidélité
     media_dir = out_dir / "fidelity_media"

@@ -41,15 +41,22 @@ def detect_platform() -> str:
     return "linux"
 
 
+from urllib.parse import urlparse
+
 def slug_from_input(raw: str) -> str:
     raw = (raw or "").strip()
     if raw.startswith(("http://", "https://")):
-        raw = raw.split("/")[2]
+        raw = urlparse(raw).netloc
     raw = raw.split("/")[0].split("?")[0]
-    for suffix in (".noblogs.org", ".zvz.fr"):
-        if raw.lower().endswith(suffix):
+    # Strip common domains if present, otherwise just use the first part of the domain as slug
+    raw = raw.lower()
+    for suffix in (".noblogs.org", ".wordpress.com"):
+        if raw.endswith(suffix):
             raw = raw[: -len(suffix)]
-    return raw.strip().lower().replace(" ", "")
+            break
+    if "." in raw:
+        raw = raw.split(".")[0]
+    return raw.strip().replace(" ", "")
 
 
 def _read(prompt: str) -> str:
@@ -68,10 +75,13 @@ def _banner() -> None:
 
 
 def _backup_args(slug: str, out_dir: Path, force: bool = False) -> argparse.Namespace:
+    assets_cache = Path(os.getenv("NOBLOGS_ASSETS_CACHE", str(Path.home() / ".cache" / "noblogs-assets")))
     return argparse.Namespace(
         base_url=None,
         out_dir=str(out_dir),
         no_wayback=False,
+        no_plugins=False,
+        assets_cache=str(assets_cache),
         no_media=False,
         workers=6,
         keep_uploads=True,
@@ -171,7 +181,7 @@ def interactive_wizard() -> int:
     else:
         print(t("  {} détecté.").format(plat[0].upper() + plat[1:]))
     print("")
-    print(t("  Votre slug NoBlogs : la partie avant .noblogs.org"))
+    print(t("  Le slug de votre blog : la première partie de l'adresse"))
     print(t("  Ex. https://monblog.noblogs.org → monblog"))
     print("")
     slug = _read(t("  Slug de votre blog : "))

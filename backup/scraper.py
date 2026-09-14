@@ -219,8 +219,10 @@ class NoblogsScraper:
         """Collecte toutes les URLs de médias appartenant au blog.
 
         Retient : toute URL en ``/files/`` ou ``/uploads/``, plus tout fichier
-        médiatique pointant vers ``<slug>.noblogs.org``.
+        médiatique pointant vers le domaine du blog.
         """
+        from urllib.parse import urlparse
+        domain = urlparse(self.base_url).netloc or f"{self.slug}.noblogs.org"
         urls: set[str] = set()
         glob = re.compile(r"https?://[^\s\"'<>]+\.(?:jpg|jpeg|png|gif|svg|webp|pdf|mp3|ogg|mp4|webm)", re.I)
         own_files = re.compile(rf"https?://[^\s\"'<>]*/files/[^\s\"'<>]+", re.I)
@@ -235,7 +237,7 @@ class NoblogsScraper:
             for m in own_files.finditer(text):
                 urls.add(m.group(0))
             for m in glob.finditer(text):
-                if self.slug + ".noblogs.org" in m.group(0) or "/files/" in m.group(0) or "/uploads/" in m.group(0):
+                if domain in m.group(0) or "/files/" in m.group(0) or "/uploads/" in m.group(0):
                     urls.add(m.group(0))
 
         st, b = fetch_url(f"{self.base_url}/")
@@ -244,6 +246,6 @@ class NoblogsScraper:
             for m in own_files.finditer(home_html):
                 urls.add(m.group(0))
             for m in glob.finditer(home_html):
-                if self.slug + ".noblogs.org" in m.group(0) or "/files/" in m.group(0) or "/uploads/" in m.group(0):
+                if domain in m.group(0) or "/files/" in m.group(0) or "/uploads/" in m.group(0):
                     urls.add(m.group(0))
         return sorted(urls)

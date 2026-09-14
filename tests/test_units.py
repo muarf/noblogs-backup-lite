@@ -79,7 +79,7 @@ class TestRewriteMediaUrls(unittest.TestCase):
 
     def test_other_domain_files(self):
         out = rewrite_media_urls(
-            '<img src="https://cdn.zvz.fr/files/x.png">',
+            '<img src="https://cdn.example.org/files/x.png">',
             "monblog",
             "https://monblog.noblogs.org",
         )
@@ -224,7 +224,7 @@ class TestFidelityCssFilter(unittest.TestCase):
             "</style>"
             '<style id="wp-custom-css">.post{margin:0}</style>'
         )
-        css = _extract_custom_css(html, "monblog")
+        css = _extract_custom_css(html, "monblog", "https://monblog.noblogs.org")
         self.assertIn(".post{margin:0}", css)
         self.assertNotIn("is-small-text", css)
         self.assertNotIn("sourceURL", css)
