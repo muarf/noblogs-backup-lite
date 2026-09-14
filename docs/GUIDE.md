@@ -6,29 +6,35 @@
 
 ## Étape 1 — Lancer l'outil
 
-L'outil installe automatiquement ce dont il a besoin la première fois (1 à 2 minutes) et ne nécessite aucune compétence technique particulière.
+L'outil s'installe et se lance en **une seule commande** (rien à télécharger à la main). Il installe automatiquement ce dont il a besoin la première fois (1 à 2 minutes) et ne nécessite aucune compétence technique particulière.
 
-### Sur Windows
-1. Ouvrez le dossier `noblogs-backup-lite`
-2. Double-cliquez sur le fichier `noblogs.bat`
+### Le plus simple — 1 commande
 
-### Sur macOS
-1. Ouvrez l'application **Terminal** (dans Applications → Utilitaires)
-2. Glissez-déposez le fichier `noblogs` (qui est dans le dossier `noblogs-backup-lite`) dans la fenêtre du terminal
-3. Appuyez sur la touche **Entrée** (Retour)
+Ouvrez un terminal et copiez-collez **une** de ces commandes :
 
-### Sur Ubuntu / Linux
-Ouvrez un terminal dans le dossier `noblogs-backup-lite` :
+**Linux / macOS / Tails :**
 ```bash
-./noblogs
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"
 ```
 
-### Sur Tails
-Allez dans **Applications → Utilitaires → Terminal**, puis allez dans le dossier (de préférence sur votre **stockage persistant** ou une clé USB) :
+*(Sans curl ? Utilisez la variante wget :)*
 ```bash
-cd ~/Persistent/noblogs-backup-lite   # ou le chemin de votre clé
-./noblogs
+bash -c "$(wget -qO- https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"
 ```
+
+**Windows — PowerShell :**
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.ps1 -UseBasicParsing | iex"
+```
+
+L'outil est installé dans `~/noblogs-backup-lite` (sous Tails, dans votre **stockage persistant** : `~/Persistent/noblogs-backup-lite`) et l'assistant démarre.
+
+### Déjà téléchargé (méthode manuelle)
+
+**Windows** : double-cliquez sur `noblogs.bat`.
+**macOS / Linux / Tails** : ouvrez un terminal dans le dossier `noblogs-backup-lite` puis `./noblogs`.
+
+> **Anonymat** : l'outil n'utilise ni Tor ni proxy (accès HTTPS direct). Pour une sauvegarde anonyme, faites-le depuis **Tails** : tout le trafic passe alors par Tor.
 
 ---
 
@@ -40,6 +46,12 @@ L'assistant vous demande l'adresse de votre blog (ou juste son "slug", la premi�
 |---|---|
 | `https://monblog.noblogs.org` | `monblog` ou `https://monblog.noblogs.org` |
 | `https://actforfree.noblogs.org` | `actforfree` |
+
+**Encore plus rapide** — installez *et* sauvegardez en une seule commande en ajoutant le blog :
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)" -- sauvegarder monblog
+```
 
 Attendez la fin de l'opération. Vous obtiendrez un fichier dans le dossier `backups` :
 ```text

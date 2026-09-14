@@ -1,11 +1,21 @@
 # noblogs-backup-lite
 
 Sauvegarde **complète et autonome** de n'importe quel blog [NoBlogs](https://noblogs.org), empaquetée dans un ZIP.
-## Démarrage (1 commande)
+## Démarrage (1 commande, aucune installation)
 
-| OS | Comment lancer |
+Copiez-collez une seule de ces commandes dans un terminal :
+
+| OS | Commande |
 |---|---|
-| Tails / Ubuntu / macOS | Terminal → `./noblogs` |
+| Linux / macOS / Tails | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
+| Linux / macOS (sans curl) | `bash -c "$(wget -qO- https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
+| Windows (PowerShell) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.ps1 -UseBasicParsing \| iex"` |
+
+L'outil est téléchargé, installé dans `~/noblogs-backup-lite` (sous Tails : `~/Persistent/noblogs-backup-lite`), et l'assistant démarre aussitôt. **Sauvegarde directe** d'un blog en une commande :
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)" -- sauvegarder monblog
+```
 
 L'assistant vous demande le slug de votre blog puis sauvegarde tout dans `backups/<slug>-noblogs-backup.zip`.
 La première fois seulement, l'outil installe automatiquement les dépendances Python (1 à 2 min).
@@ -15,6 +25,8 @@ La première fois seulement, l'outil installe automatiquement les dépendances P
 | `./noblogs` | Assistant interactif |
 | `./noblogs sauvegarder monblog` | Sauvegarde → `backups/monblog-noblogs-backup.zip` |
 | `./noblogs aide` | Aide |
+
+> **Anonymat** : l'outil n'utilise ni Tor ni proxy (accès HTTPS direct). Pour une sauvegarde anonyme, redémarrez sous [Tails](https://tails.net) : tout le trafic passe alors par Tor.
 
 ## Fonctionnalités
 

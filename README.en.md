@@ -1,11 +1,21 @@
 # noblogs-backup-lite
 
 **Complete and autonomous** backup of any [NoBlogs](https://noblogs.org) blog, packaged in a ZIP.
-## Quick start (1 command)
+## Quick start (1 command, no installation)
 
-| OS | How to run |
+Copy-paste one of these commands in a terminal:
+
+| OS | Command |
 |---|---|
-| Tails / Ubuntu / macOS | Terminal → `./noblogs` |
+| Linux / macOS / Tails | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
+| Linux / macOS (no curl) | `bash -c "$(wget -qO- https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
+| Windows (PowerShell) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.ps1 -UseBasicParsing \| iex"` |
+
+The tool is downloaded, installed into `~/noblogs-backup-lite` (on Tails: `~/Persistent/noblogs-backup-lite`), and the wizard starts right away. **Direct backup** of a blog in one command:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)" -- backup myblog
+```
 
 The wizard asks for the slug of your blog and then backups everything into `backups/<slug>-noblogs-backup.zip`.
 Only the first time, the tool automatically installs Python dependencies (1 to 2 min).
@@ -15,6 +25,8 @@ Only the first time, the tool automatically installs Python dependencies (1 to 2
 | `./noblogs` | Interactive wizard |
 | `./noblogs backup myblog` | Backup → `backups/myblog-noblogs-backup.zip` |
 | `./noblogs help` | Help |
+
+> **Anonymity**: the tool uses neither Tor nor a proxy (direct HTTPS). For an anonymous backup, reboot into [Tails](https://tails.net): all traffic then goes through Tor.
 
 ## Features
 
