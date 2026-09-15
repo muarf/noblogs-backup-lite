@@ -7,7 +7,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-VERSION="2.1.0-lite"
+VERSION="2.1.1-lite"
 
 # --- Couleurs (désactivées si pas de terminal) ---
 if [ -t 1 ]; then
@@ -127,7 +127,9 @@ ensure_venv() {
   ensure_python
   local VENV
   VENV="$(venv_dir)"
-  if [ ! -x "$VENV/bin/python3" ]; then
+  # Vérifie aussi pip : un venv partiellement créé (python3 présent mais pip
+  # absent, ex. après un échec ensurepip) doit être reconstruit.
+  if [ ! -x "$VENV/bin/python3" ] || ! "$VENV/bin/python3" -m pip --version >/dev/null 2>&1; then
     info "$L_INFO_ENV"
     if ! python3 -m venv "$VENV" 2>/dev/null; then
       # Module venv présent mais ensurepip manquant (Debian / Tails / Ubuntu).

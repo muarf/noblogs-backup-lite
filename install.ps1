@@ -9,7 +9,7 @@ function Get-WriteLine($Text, $Color = "White") {
     Write-Host "  $Text" -ForegroundColor $Color
 }
 
-$TAG_URL   = "https://codeload.github.com/muarf/noblogs-backup-lite/zip/refs/tags/v2.1.0"
+$TAG_URL   = "https://codeload.github.com/muarf/noblogs-backup-lite/zip/refs/tags/v2.1.1"
 $MAIN_URL  = "https://codeload.github.com/muarf/noblogs-backup-lite/zip/refs/heads/main"
 $TARGET    = Join-Path $env:USERPROFILE "noblogs-backup-lite"
 

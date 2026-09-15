@@ -25,8 +25,8 @@ if [[ "$USER_LANG" == en* ]]; then
   L_TITLE="Installing noblogs-backup-lite…"
   L_NO_TOOL="Download impossible: curl/wget unavailable or no network."
   L_PY_DIR="Install directory:"
-  L_TAG="Downloading version v2.1.0…"
-  L_MAIN="v2.1.0 not found, using latest main…"
+  L_TAG="Downloading version v2.1.1…"
+  L_MAIN="v2.1.1 not found, using latest main…"
   L_BAD="Downloaded archive is invalid."
   L_OK="Installed"
   L_UPDATE="Updated"
@@ -37,8 +37,8 @@ elif [[ "$USER_LANG" == it* ]]; then
   L_TITLE="Installazione di noblogs-backup-lite…"
   L_NO_TOOL="Download impossibile: curl/wget non disponibili o nessuna rete."
   L_PY_DIR="Directory di installazione:"
-  L_TAG="Download versione v2.1.0…"
-  L_MAIN="v2.1.0 non trovata, uso l'ultima main…"
+  L_TAG="Download versione v2.1.1…"
+  L_MAIN="v2.1.1 non trovata, uso l'ultima main…"
   L_BAD="L'archivio scaricato non è valido."
   L_OK="Installato"
   L_UPDATE="Aggiornato"
@@ -49,8 +49,8 @@ else
   L_TITLE="Installation de noblogs-backup-lite…"
   L_NO_TOOL="Téléchargement impossible : curl/wget absents ou pas de réseau."
   L_PY_DIR="Répertoire d'installation :"
-  L_TAG="Téléchargement de la version v2.1.0…"
-  L_MAIN="v2.1.0 introuvable, bascule sur la dernière main…"
+  L_TAG="Téléchargement de la version v2.1.1…"
+  L_MAIN="v2.1.1 introuvable, bascule sur la dernière main…"
   L_BAD="L'archive téléchargée est invalide."
   L_OK="Installé"
   L_UPDATE="Mis à jour"
@@ -91,7 +91,7 @@ download() {  # $1=url  → stdout
   fi
 }
 
-TAG_URL="https://codeload.github.com/muarf/noblogs-backup-lite/tar.gz/refs/tags/v2.1.0"
+TAG_URL="https://codeload.github.com/muarf/noblogs-backup-lite/tar.gz/refs/tags/v2.1.1"
 MAIN_URL="https://codeload.github.com/muarf/noblogs-backup-lite/tar.gz/refs/heads/main"
 
 # ---------------------------------------------------------------- install
