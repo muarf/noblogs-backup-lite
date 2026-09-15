@@ -20,6 +20,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lit
 L'assistant vous demande le slug de votre blog puis sauvegarde tout dans `backups/<slug>-noblogs-backup.zip`.
 La première fois seulement, l'outil installe automatiquement les dépendances Python (1 à 2 min).
 
+> **Sous Tails** : Python 3 est déjà inclus. Le paquet `python3-venv` n'y est pas, mais ce n'est pas un blocage : l'outil crée son environnement **sans sudo ni mot de passe d'administration** (il installe `pip` lui-même, dans votre espace personnel).
+
 | Commande | Action |
 |---|---|
 | `./noblogs` | Assistant interactif |
@@ -50,6 +52,10 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python3 -m backup monblog
 ```
+
+> **Debian / Tails** : si `python3-venv` est absent, `python3 -m venv` échoue. Utilisez
+> `python3 -m venv --without-pip .venv && curl -fsSL https://bootstrap.pypa.io/get-pip.py | .venv/bin/python3`
+> puis `source .venv/bin/activate && pip install -r requirements.txt` (aucun sudo requis).
 
 ## Options avancées
 

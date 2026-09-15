@@ -80,3 +80,14 @@ Créez un fichier texte `liste.txt` avec une adresse par ligne. Ouvrez un termin
 
 **Sur Tails, mes fichiers disparaissent au redémarrage ?**  
 Oui, sauf si vous activez le stockage persistant ou si vous copiez le fichier `.zip` sur une clé USB **avant** d'éteindre l'ordinateur.
+
+**Sous Tails, j'ai une erreur « python3-venv » / module venv manquant ?**
+Rien à faire : Python 3 est déjà présent, et l'outil crée tout seul son
+environnement **sans sudo ni mot de passe d'administration**. La première
+fois seulement, il installe `pip` dans un dossier de votre espace personnel
+(1 à 2 min). Si vous préférez passer par sudo, définissez un **mot de passe
+d'administration** à l'écran de bienvenue de Tails puis tapez :
+```bash
+sudo apt install python3-venv
+```
+Sur Ubuntu (qui inclut `python3-venv`), tout fonctionne déjà sans commande supplémentaire.
