@@ -61,7 +61,7 @@ fi
 
 # ----------------------------------------------------------- plateforme
 detect_platform() {
-  if [ -f /etc/amnesia ] || [ -n "${TAILS_VERSION:-}" ]; then
+  if [ -f /etc/amnesia ] || [ -n "${TAILS_VERSION:-}" ] || grep -qi 'ID=tails' /etc/os-release 2>/dev/null; then
     echo "tails"
   elif [ "$(uname -s)" = "Darwin" ]; then
     echo "macos"
