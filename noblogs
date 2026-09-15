@@ -67,7 +67,7 @@ else
 fi
 
 detect_platform() {
-  if [ -f /etc/amnesia ] || [ -n "${TAILS_VERSION:-}" ]; then
+  if [ -f /etc/amnesia ] || [ -n "${TAILS_VERSION:-}" ] || grep -qi 'ID=tails' /etc/os-release 2>/dev/null; then
     echo "tails"
   elif [ "$(uname -s)" = "Darwin" ]; then
     echo "macos"
@@ -154,8 +154,14 @@ ensure_venv() {
     fi
     "$VENV/bin/python3" -m pip install -q --upgrade pip
     "$VENV/bin/python3" -m pip install -q -r "$REPO_ROOT/requirements.txt"
+    touch "$VENV/.reqs_installed"
     ok "$L_OK_ENV"
   fi
+
+  if [ ! -f "$VENV/.reqs_installed" ] || [ "$REPO_ROOT/requirements.txt" -nt "$VENV/.reqs_installed" ]; then
+    "$VENV/bin/python3" -m pip install -q -r "$REPO_ROOT/requirements.txt" >/dev/null 2>&1 && touch "$VENV/.reqs_installed" || true
+  fi
+
   export NOBLOGS_VENV="$VENV"
 }
 

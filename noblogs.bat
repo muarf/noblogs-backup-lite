@@ -40,8 +40,14 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
         pause
         exit /b 1
     )
+    type nul > "%VENV_DIR%\.reqs_installed"
     echo [OK] Environnement pret.
     echo.
+)
+
+if not exist "%VENV_DIR%\.reqs_installed" (
+    "%VENV_DIR%\Scripts\python.exe" -m pip install -q -r "%~dp0requirements.txt" >nul 2>&1
+    type nul > "%VENV_DIR%\.reqs_installed"
 )
 
 :: 3. Lancer l'assistant interactif
