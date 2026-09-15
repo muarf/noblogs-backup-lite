@@ -9,7 +9,7 @@ Copy-paste one of these commands in a terminal:
 |---|---|
 | Linux / macOS / Tails | `bash -c "$(curl -fsSL https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
 | Linux / macOS (no curl) | `bash -c "$(wget -qO- https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.sh)"` |
-| Windows (PowerShell) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.ps1 -UseBasicParsing \| iex"` |
+| Windows (PowerShell) | `powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (irm https://raw.githubusercontent.com/muarf/noblogs-backup-lite/main/install.ps1) \| iex"` |
 
 The tool is downloaded, installed into `~/noblogs-backup-lite` (on Tails: `~/Persistent/noblogs-backup-lite`), and the wizard starts right away. **Direct backup** of a blog in one command:
 
